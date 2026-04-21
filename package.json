@@ -1,22 +1,18 @@
 {
-  "name": "pancake-robot",
+  "name": "busy-little-happy",
   "version": "1.0.0",
-  "description": "Autonomous kids music production pipeline",
+  "description": "Catalog-first kids activity pack pipeline adapted from Pancake Robot",
   "type": "module",
   "main": "src/orchestrator.js",
   "scripts": {
     "start": "node src/orchestrator.js",
     "web": "node src/web/server.js",
     "setup": "node src/orchestrator.js --setup",
-    "new": "node src/orchestrator.js --new",
+    "seed": "node src/orchestrator.js --seed",
+    "list-families": "node src/orchestrator.js --list-families",
+    "list-skus": "node src/orchestrator.js --list-skus",
     "report": "node src/orchestrator.js --report",
-    "research": "node src/orchestrator.js --research",
-    "schedule": "node src/orchestrator.js --schedule",
-    "suggest": "node src/orchestrator.js --suggest",
-    "list": "node src/orchestrator.js --list",
-    "verify-song": "node src/orchestrator.js --verify",
-    "approve": "node src/orchestrator.js --approve",
-    "reject": "node src/orchestrator.js --reject"
+    "suggest": "node src/orchestrator.js --suggest"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.87.0",
