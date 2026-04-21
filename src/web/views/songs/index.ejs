@@ -1,0 +1,213 @@
+<% title = 'Song Catalog' %>
+
+<div class="p-8" x-data="catalog()">
+
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">Song Catalog</h1>
+      <p class="text-sm text-zinc-500 mt-1" id="song-count"><%= songs.length %> song<%= songs.length !== 1 ? 's' : '' %></p>
+    </div>
+    <a href="/ideas" class="border border-zinc-200 text-sm px-3 py-1.5 rounded-lg hover:bg-zinc-50 transition text-zinc-600">💡 From Idea</a>
+  </div>
+
+  <!-- Filters -->
+  <form method="GET" action="/songs" class="flex flex-wrap gap-3 mb-6">
+    <input type="text" name="q" value="<%= q %>" placeholder="Search songs…"
+      class="border border-zinc-200 rounded-lg px-3 py-2 text-sm flex-1 min-w-48 focus:outline-none focus:ring-2 focus:ring-zinc-900">
+
+    <select name="status" class="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+      <option value="">All statuses</option>
+      <option value="approved" <%= filterStatus === 'approved' ? 'selected' : '' %>>✅ Approved (TuneCore ready)</option>
+      <% for (const s of ['draft','writing','lyrics_ready','audio_in_progress','audio_ready','artwork_ready','metadata_ready','ready_to_publish','submitted_to_tunecore','published','paused']) { %>
+        <option value="<%= s %>" <%= filterStatus === s ? 'selected' : '' %>><%= s.replace(/_/g,' ') %></option>
+      <% } %>
+    </select>
+
+    <select name="sort" class="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+      <option value="" <%= sort === '' ? 'selected' : '' %>>Recently Updated</option>
+      <option value="created" <%= sort === 'created' ? 'selected' : '' %>>Newest First</option>
+      <option value="readiness" <%= sort === 'readiness' ? 'selected' : '' %>>Most Ready</option>
+    </select>
+
+    <button type="submit" class="bg-zinc-100 border border-zinc-200 text-sm px-4 py-2 rounded-lg hover:bg-zinc-200 transition">Filter</button>
+    <% if (q || filterStatus) { %>
+      <a href="/songs" class="text-sm px-4 py-2 text-zinc-500 hover:text-zinc-700 transition self-center">Clear</a>
+    <% } %>
+  </form>
+
+  <!-- Quick filter tabs -->
+  <div class="flex gap-2 mb-6 border-b border-zinc-200 -mx-8 px-8 overflow-x-auto">
+    <% const tabs = [['', 'All', songs.length], ['approved', '✅ Approved', songs.filter(s=>s.status==='approved').length], ['ready_to_publish', 'Ready', songs.filter(s=>s.status==='ready_to_publish').length], ['draft', 'Draft', songs.filter(s=>s.status==='draft'||s.status==='writing').length]]; %>
+    <% for (const [val, label, count] of tabs) { %>
+    <a href="/songs?status=<%= val %>"
+       class="shrink-0 pb-2.5 px-1 text-sm border-b-2 transition-colors <%= filterStatus === val ? 'border-zinc-900 text-zinc-900 font-semibold' : 'border-transparent text-zinc-400 hover:text-zinc-700' %>">
+      <%= label %> <span class="ml-1 text-xs text-zinc-400"><%= count %></span>
+    </a>
+    <% } %>
+  </div>
+
+  <% if (songs.length === 0) { %>
+    <div class="text-center py-20 text-zinc-400">
+      <div class="text-5xl mb-4">🎵</div>
+      <div class="text-lg font-medium text-zinc-500">No songs found</div>
+      <div class="text-sm mt-2">
+        <% if (q || filterStatus) { %>
+          Try adjusting your filters, or <a href="/songs" class="underline">clear them</a>.
+        <% } else { %>
+          <a href="/ideas" class="underline">Promote an idea</a> to get started.
+        <% } %>
+      </div>
+    </div>
+  <% } else { %>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+    <% for (const song of songs) { %>
+    <div class="group relative bg-white border border-zinc-200 rounded-2xl overflow-hidden hover:border-zinc-300 hover:shadow-md transition-all flex flex-col"
+         id="song-card-<%= song.id %>">
+
+      <!-- Delete button — top right corner, visible on hover -->
+      <button onclick="deleteSong('<%= song.id %>', '<%= (song.title || song.topic || song.id).replace(/'/g, "\\'") %>')"
+        class="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs backdrop-blur-sm"
+        title="Delete song">✕</button>
+
+      <!-- Thumbnail — click goes to song detail -->
+      <a href="/songs/<%= song.id %>" class="block relative aspect-video bg-gradient-to-br from-zinc-100 to-zinc-200 overflow-hidden">
+        <% if (song.thumbnailUrl) { %>
+          <img src="<%= song.thumbnailUrl %>" alt="<%= song.title %>"
+               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+        <% } else { %>
+          <div class="w-full h-full flex flex-col items-center justify-center text-zinc-400 gap-2">
+            <span class="text-4xl">🎵</span>
+            <span class="text-xs font-medium">No thumbnail yet</span>
+          </div>
+        <% } %>
+
+        <!-- Status badge -->
+        <div class="absolute top-2 left-2">
+          <span class="<%= song.status === 'approved' ? 'bg-emerald-500 text-white' : statusBadge(song.status) %> shadow-sm text-xs px-2 py-0.5 rounded-full font-medium">
+            <%= song.status === 'approved' ? '✅ Approved' : (song.status || 'draft').replace(/_/g,' ') %>
+          </span>
+        </div>
+
+        <!-- Audio indicator -->
+        <% if (song.hasAudio) { %>
+        <div class="absolute bottom-2 left-2">
+          <span class="bg-black/60 text-white text-xs px-2 py-0.5 rounded-full backdrop-blur-sm flex items-center gap-1">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/></svg>
+            audio
+          </span>
+        </div>
+        <% } %>
+      </a>
+
+      <!-- Card body -->
+      <div class="p-4 flex-1 flex flex-col gap-2">
+        <a href="/songs/<%= song.id %>" class="block">
+          <h3 class="font-semibold text-sm leading-snug line-clamp-2"><%= song.title || song.topic || song.id %></h3>
+          <% if (song.topic && song.title && song.topic !== song.title) { %>
+            <p class="text-xs text-zinc-400 mt-0.5 truncate"><%= song.topic %></p>
+          <% } %>
+        </a>
+
+        <!-- Progress bar -->
+        <div class="space-y-1 mt-auto">
+          <div class="flex items-center justify-between text-xs text-zinc-500">
+            <span><%= song.progress.done %>/<%= song.progress.total %> steps</span>
+            <span class="font-medium"><%= song.progress.pct %>%</span>
+          </div>
+          <div class="w-full h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all
+              <%= song.progress.pct >= 100 ? 'bg-emerald-500' : song.progress.pct >= 60 ? 'bg-green-500' : song.progress.pct >= 30 ? 'bg-amber-400' : 'bg-zinc-300' %>"
+              style="width: <%= song.progress.pct %>%"></div>
+          </div>
+        </div>
+
+        <!-- Action row -->
+        <div class="flex items-center gap-2 pt-2 border-t border-zinc-100">
+          <% if (song.status !== 'approved') { %>
+          <button onclick="approveSong('<%= song.id %>')"
+            class="flex-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold px-2 py-1.5 rounded-lg transition">
+            ✅ Approve
+          </button>
+          <% } else { %>
+          <span class="flex-1 text-xs text-emerald-600 font-semibold text-center py-1.5">✅ TuneCore ready</span>
+          <% } %>
+          <span class="text-xs text-zinc-400"><%= timeAgo(song.updated_at || song.created_at) %></span>
+        </div>
+      </div>
+
+    </div>
+    <% } %>
+  </div>
+  <% } %>
+</div>
+
+<!-- Delete confirmation modal -->
+<div id="delete-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-8 hidden">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+    <div class="text-xl mb-2">🗑️ Delete Song?</div>
+    <p class="text-sm text-zinc-600 mb-1">This will permanently remove:</p>
+    <p class="text-sm font-semibold text-zinc-900 mb-4" id="delete-song-name"></p>
+    <p class="text-xs text-zinc-400 mb-6">The database record will be deleted. Output files on disk are kept — remove them manually from <code class="font-mono">output/songs/</code> if needed.</p>
+    <div class="flex gap-3">
+      <button onclick="confirmDelete()"
+        class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2.5 rounded-xl transition text-sm">
+        Delete
+      </button>
+      <button onclick="closeDeleteModal()"
+        class="flex-1 border border-zinc-200 text-zinc-600 px-4 py-2.5 rounded-xl hover:bg-zinc-50 transition text-sm">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function catalog() { return {}; }
+
+let _deleteSongId = null;
+
+function deleteSong(songId, songName) {
+  _deleteSongId = songId;
+  document.getElementById('delete-song-name').textContent = songName;
+  document.getElementById('delete-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDeleteModal() {
+  _deleteSongId = null;
+  document.getElementById('delete-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function confirmDelete() {
+  if (!_deleteSongId) return;
+  fetch('/api/songs/' + _deleteSongId, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        // Remove card from DOM
+        const card = document.getElementById('song-card-' + _deleteSongId);
+        if (card) card.remove();
+        closeDeleteModal();
+        // Update count
+        const remaining = document.querySelectorAll('[id^="song-card-"]').length;
+        const el = document.getElementById('song-count');
+        if (el) el.textContent = remaining + ' song' + (remaining !== 1 ? 's' : '');
+      } else {
+        alert('Delete failed: ' + (d.error || 'unknown error'));
+      }
+    })
+    .catch(err => alert('Error: ' + err.message));
+}
+
+function approveSong(songId) {
+  fetch('/api/songs/' + songId + '/approve', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) window.location.reload();
+      else alert('Approve failed: ' + (d.error || 'unknown'));
+    });
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDeleteModal(); });
+</script>
