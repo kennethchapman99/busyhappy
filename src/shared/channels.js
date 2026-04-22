@@ -1,12 +1,8 @@
 const CHANNEL_CONFIG = {
-  etsy: { status: 'live', syncStatus: 'seeded', urlBase: 'https://www.etsy.com/listing/' },
-  gumroad: { status: 'draft', syncStatus: 'planned', urlBase: 'https://busy-little-happy.gumroad.com/l/' },
-  kdp: { status: 'candidate', syncStatus: 'planned', urlBase: 'https://kdp.amazon.com/en_US/bookshelf' },
+  etsy: { status: 'not_listed', syncStatus: 'not_started', marketplaceLabel: 'Etsy draft' },
+  gumroad: { status: 'not_listed', syncStatus: 'not_started', marketplaceLabel: 'Gumroad draft' },
+  kdp: { status: 'not_listed', syncStatus: 'not_started', marketplaceLabel: 'KDP candidate' },
 };
-
-function toSlug(value) {
-  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-}
 
 function sentenceCase(value) {
   return value ? value.charAt(0).toUpperCase() + value.slice(1) : '';
@@ -25,24 +21,25 @@ function buildEtsyTags(sku) {
   return [...new Set(tags.map((tag) => tag.slice(0, 20)))].slice(0, 13);
 }
 
-function buildDescriptionLines(sku) {
+function buildDescriptionLines(sku, channel) {
   return [
     `${sku.title}`,
     `${sku.subtitle}`,
     '',
+    `Channel state: ${CHANNEL_CONFIG[channel].marketplaceLabel}`,
     `Use case: ${sentenceCase(sku.useCase)}`,
     `Age band: ${sku.ageBand}`,
     `Theme: ${sentenceCase(sku.theme)}`,
     `Format: ${sentenceCase(sku.formatType)}`,
     `Pages: ${sku.pageCount}`,
     '',
-    'What is included:',
-    '- Printable PDF activity pack',
+    'What is intended to be included once built:',
+    '- Printable activity pack PDF',
     '- Cover page',
     '- Instructions page',
     '- Screen-free games, prompts, and quiet-time activities',
     '',
-    'AI disclosure: Listing copy and illustrations may be AI-assisted and are reviewed before publishing.',
+    'This is a planning draft only. The product is not live and has no marketplace listing yet.',
   ];
 }
 
@@ -58,19 +55,20 @@ export function buildSkuListing(sku, channel) {
     ownerType: 'sku',
     ownerId: sku.id,
     channel,
-    externalId: listingId,
+    externalId: null,
     title,
-    description: buildDescriptionLines(sku).join('\n'),
+    description: buildDescriptionLines(sku, channel).join('\n'),
     tags: channel === 'etsy' ? buildEtsyTags(sku) : sku.tags,
     price: channel === 'etsy' ? sku.priceEtsy : channel === 'gumroad' ? sku.priceGumroad : sku.priceKdp,
     status: config.status,
     syncStatus: config.syncStatus,
-    listingUrl: `${config.urlBase}${toSlug(title)}`,
+    listingUrl: null,
     channelMetadata: {
       aiDisclosure: true,
       formatType: sku.formatType,
       pageCount: sku.pageCount,
       primaryChannel: channel,
+      planningOnly: true,
     },
   };
 }
@@ -83,25 +81,23 @@ export function buildBundleListing(bundle, skus, channel) {
     ownerType: 'bundle',
     ownerId: bundle.id,
     channel,
-    externalId: listingId,
+    externalId: null,
     title: bundle.title,
     description: [
       bundle.title,
       bundle.notes || '',
       '',
-      'Included products:',
+      `Channel state: ${config.marketplaceLabel}`,
+      'Included products once built:',
       ...skus.map((sku) => `- ${sku.title}`),
       '',
-      'Primary value:',
-      '- Lower cost per pack',
-      '- Faster purchase decision',
-      '- Better giftable and travel-planning offer',
+      'This is a bundle plan only. It is not live and has no revenue yet.',
     ].join('\n'),
     tags: ['bundle', 'kids printable', 'screen free', 'travel activities', 'busy little happy'],
     price: channel === 'etsy' ? bundle.priceEtsy : channel === 'gumroad' ? bundle.priceGumroad : bundle.priceKdp,
     status: config.status,
     syncStatus: config.syncStatus,
-    listingUrl: `${config.urlBase}${toSlug(bundle.title)}`,
-    channelMetadata: { skuCount: skus.length, bundleType: bundle.bundleType },
+    listingUrl: null,
+    channelMetadata: { skuCount: skus.length, bundleType: bundle.bundleType, planningOnly: true },
   };
 }
