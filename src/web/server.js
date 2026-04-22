@@ -33,6 +33,7 @@ const PORT = Number(process.env.WEB_PORT || 3737);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(express.static(join(__dirname, 'public')));
 
 function money(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
@@ -43,8 +44,13 @@ function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-function badge(value) {
-  return `<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:#fff1cc;color:#7a5400;font-size:12px;font-weight:700;">${esc(value)}</span>`;
+function badge(value, tone = 'gold') {
+  const styles = {
+    gold: 'background:#fff1cc;color:#7a5400;',
+    teal: 'background:#dff7f5;color:#13615d;',
+    plum: 'background:#efe3f9;color:#6a2f7e;',
+  };
+  return `<span style="display:inline-block;padding:4px 8px;border-radius:999px;${styles[tone] || styles.gold}font-size:12px;font-weight:700;">${esc(value)}</span>`;
 }
 
 function shell(title, currentPath, body) {
@@ -56,30 +62,33 @@ function shell(title, currentPath, body) {
     ['/channels', 'Channels'],
   ].map(([href, label]) => {
     const active = currentPath === href || (href !== '/' && currentPath.startsWith(href));
-    return `<a href="${href}" style="display:block;padding:10px 12px;border-radius:12px;text-decoration:none;font-weight:700;color:${active ? '#2c261f' : '#756a5a'};background:${active ? 'rgba(255,184,77,.18)' : 'transparent'};">${label}</a>`;
+    return `<a href="${href}" style="display:block;padding:10px 12px;border-radius:14px;text-decoration:none;font-weight:700;color:${active ? '#18325f' : '#6d6b73'};background:${active ? 'linear-gradient(90deg, rgba(255,111,145,.14), rgba(78,199,193,.14))' : 'transparent'};">${label}</a>`;
   }).join('');
 
   return `<!doctype html>
   <html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>${esc(title)}</title>
   <style>
-    :root{--bg:#fffaf3;--panel:#fff;--sidebar:#fff3de;--border:#f0dec0;--text:#2c261f;--muted:#756a5a;--shadow:0 10px 30px rgba(48,32,8,.08)}
-    *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#fffaf3 0%,#fff8ef 100%);color:var(--text);font:14px/1.45 Inter,system-ui,sans-serif}
-    a{color:inherit} .shell{display:grid;grid-template-columns:280px 1fr;min-height:100vh} .sidebar{background:var(--sidebar);border-right:1px solid var(--border);padding:28px 22px}
-    .brand{display:flex;gap:14px;align-items:center;margin-bottom:26px}.mark{width:52px;height:52px;border-radius:18px;background:linear-gradient(180deg,#ffd98c 0%,#ffb84d 100%);display:grid;place-items:center;font-size:24px;box-shadow:var(--shadow)}
-    .eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:var(--muted);margin-bottom:6px} .main{padding:28px}
-    .card,.panel{background:var(--panel);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)} .card{padding:18px 20px}.panel{padding:18px;margin-bottom:18px}
+    :root{--bg:#fffaf3;--panel:#fff;--sidebar:#fff4ea;--border:#f1dfcf;--text:#18325f;--muted:#6d6b73;--shadow:0 12px 30px rgba(24,50,95,.08);--pink:#ff6f91;--orange:#ff9f40;--yellow:#f7c548;--teal:#4ec7c1;--plum:#a56cc1}
+    *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#fffaf3 0%,#fff7f0 100%);color:var(--text);font:14px/1.45 Inter,system-ui,sans-serif}
+    a{color:inherit} .shell{display:grid;grid-template-columns:300px 1fr;min-height:100vh} .sidebar{background:var(--sidebar);border-right:1px solid var(--border);padding:28px 22px}
+    .brand{margin-bottom:22px}.brand-logo{display:block;width:100%;max-width:240px;height:auto;border-radius:18px;background:#fff;box-shadow:var(--shadow);padding:10px}.brand-copy{margin-top:10px;color:var(--muted);font-size:13px}
+    .eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:var(--muted);margin-bottom:6px} .main{padding:30px}
+    .card,.panel{background:var(--panel);border:1px solid var(--border);border-radius:24px;box-shadow:var(--shadow)} .card{padding:18px 20px}.panel{padding:20px;margin-bottom:18px}
     .stats{display:grid;gap:14px;grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:22px}.label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}.value{display:block;font-size:28px;margin-top:10px;font-weight:800}
     .grid2{display:grid;gap:18px;grid-template-columns:1fr 1fr} table{width:100%;border-collapse:collapse} th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--border);vertical-align:top}
     th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)} .muted{color:var(--muted)} .small{font-size:12px}
-    .row{display:flex;justify-content:space-between;align-items:start;gap:16px;padding:14px;border:1px solid var(--border);border-radius:16px;background:#fffdfa;margin-bottom:12px}
-    .btn{border:1px solid var(--border);padding:10px 12px;border-radius:12px;background:#fff;cursor:pointer;font:inherit;font-weight:700}.btn.primary{background:linear-gradient(180deg,#ffcf6e 0%,#ffb84d 100%)}
-    .filters{display:flex;gap:12px;margin-bottom:18px}.filters input,.filters select{border-radius:12px;border:1px solid var(--border);padding:10px 12px;background:#fff;font:inherit}
-    @media(max-width:1100px){.shell{grid-template-columns:1fr}.stats,.grid2{grid-template-columns:1fr}}
+    .row{display:flex;justify-content:space-between;align-items:start;gap:16px;padding:14px;border:1px solid var(--border);border-radius:18px;background:#fffdfa;margin-bottom:12px}
+    .btn{border:1px solid var(--border);padding:10px 12px;border-radius:14px;background:#fff;cursor:pointer;font:inherit;font-weight:700}.btn.primary{background:linear-gradient(135deg,var(--pink) 0%, var(--orange) 35%, var(--yellow) 70%, var(--teal) 100%);color:#18325f}
+    .filters{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap}.filters input,.filters select{border-radius:14px;border:1px solid var(--border);padding:10px 12px;background:#fff;font:inherit}
+    .hero{display:grid;grid-template-columns:280px 1fr;gap:24px;align-items:center}.hero-logo{width:100%;max-width:280px;border-radius:24px;background:#fff9f0;padding:12px;border:1px solid var(--border)}
+    .hero-kicker{display:inline-block;padding:6px 10px;border-radius:999px;background:#dff7f5;color:#13615d;font-weight:700;margin-bottom:10px}.hero h2{font-size:40px;line-height:1.05;margin:0 0 10px 0}.hero p{font-size:16px;color:var(--muted);margin:0 0 16px 0}
+    .swatches{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}.swatch{width:28px;height:28px;border-radius:10px;border:1px solid rgba(0,0,0,.06)}
+    @media(max-width:1100px){.shell{grid-template-columns:1fr}.stats,.grid2,.hero{grid-template-columns:1fr}}
   </style></head><body><div class="shell"><aside class="sidebar">
-  <div class="brand"><div class="mark">☀️</div><div><div class="eyebrow">Busy Little Happy</div><h1 style="margin:0;font-size:24px">Catalog Admin</h1></div></div>
+  <div class="brand"><img class="brand-logo" src="/busy-little-happy-logo.svg?v=2" alt="Busy Little Happy logo"/><div class="brand-copy">Screen-free printable fun packs for restaurants, waiting rooms, hotel downtime, travel journals, and activity bundles.</div></div>
   <nav>${nav}</nav>
-  <div class="card"><h3 style="margin-top:0">Quick action</h3><button id="seed" class="btn primary" type="button">Reseed demo catalog</button><p class="muted small">Reset the repo to the 1.0 launch shelf.</p></div>
+  <div class="card"><h3 style="margin-top:0">Quick action</h3><button id="seed" class="btn primary" type="button">Reseed demo catalog</button><p class="muted small">Reset the repo to the Busy Little Happy 1.0 launch shelf.</p></div>
   </aside><main class="main">${body}</main></div>
   <script>
   const seedBtn=document.getElementById('seed');
@@ -124,7 +133,7 @@ app.get('/', (req, res) => {
   });
 
   const body = `
-    <section style="margin-bottom:22px"><div class="eyebrow">Busy Little Happy 1.0</div><h2 style="margin:0 0 6px 0">Dashboard</h2><p class="muted">Pancake Robot's catalog workflow, repurposed for screen-free kids activity packs.</p></section>
+    <section class="panel hero" style="margin-bottom:22px"><img class="hero-logo" src="/busy-little-happy-logo.svg?v=2" alt="Busy Little Happy"/><div><span class="hero-kicker">Busy Little Happy 1.0</span><h2>Printable fun packs built for real parent pain points</h2><p>Travel, wait-time, and quiet-time activity packs with an Etsy-first catalog model. No Pancake Robot branding, no music workflow, just Busy Little Happy products and performance.</p><div class="swatches"><div class="swatch" style="background:#ff6f91"></div><div class="swatch" style="background:#ff9f40"></div><div class="swatch" style="background:#f7c548"></div><div class="swatch" style="background:#4ec7c1"></div><div class="swatch" style="background:#a56cc1"></div><div class="swatch" style="background:#18325f"></div></div></div></section>
     <section class="stats">
       <article class="card"><span class="label">Families</span><strong class="value">${stats.families}</strong></article>
       <article class="card"><span class="label">SKUs</span><strong class="value">${stats.skus}</strong></article>
@@ -140,7 +149,7 @@ app.get('/', (req, res) => {
       <article class="panel"><h3 style="margin-top:0">Top performers</h3><table><thead><tr><th>Owner</th><th>Orders</th><th>Net revenue</th></tr></thead><tbody>${topPerformers.map((p)=>`<tr><td>${esc(p.owner_type)}:${esc(p.owner_id)}</td><td>${p.total_orders}</td><td>${money(p.total_net_revenue)}</td></tr>`).join('')}</tbody></table></article>
       <article class="panel"><h3 style="margin-top:0">Derivative opportunities</h3>${catalog.derivativeOpportunities.slice(0,8).map((opp)=>`<div class="row"><div><strong>${esc(opp.headline)}</strong><p class="muted">${esc(opp.why)}</p></div><button class="btn" type="button" data-derivative-owner-type="${esc(opp.sourceOwnerType)}" data-derivative-owner="${esc(opp.sourceOwnerId)}" data-derivative-type="${esc(opp.derivativeType)}" data-derivative-notes="${esc(opp.recommendedOutput)}">Plan job</button></div>`).join('')}</article>
     </section>
-    <section class="panel"><h3 style="margin-top:0">Existing derivative jobs</h3><table><thead><tr><th>Source</th><th>Type</th><th>Status</th><th>Notes</th></tr></thead><tbody>${catalog.derivativeJobs.slice(0,8).map((job)=>`<tr><td>${esc(job.sourceOwnerType)}:${esc(job.sourceOwnerId)}</td><td>${esc(job.derivativeType)}</td><td>${badge(job.jobStatus)}</td><td>${esc(job.notes||'—')}</td></tr>`).join('')}</tbody></table></section>`;
+    <section class="panel"><h3 style="margin-top:0">Existing derivative jobs</h3><table><thead><tr><th>Source</th><th>Type</th><th>Status</th><th>Notes</th></tr></thead><tbody>${catalog.derivativeJobs.slice(0,8).map((job)=>`<tr><td>${esc(job.sourceOwnerType)}:${esc(job.sourceOwnerId)}</td><td>${esc(job.derivativeType)}</td><td>${badge(job.jobStatus,'plum')}</td><td>${esc(job.notes||'—')}</td></tr>`).join('')}</tbody></table></section>`;
   res.send(shell('Busy Little Happy Dashboard', req.path, body));
 });
 
@@ -175,8 +184,8 @@ app.get('/families/:id', (req, res) => {
   const body = `<section style="margin-bottom:22px"><div class="eyebrow"><a href="/families">Families</a></div><h2 style="margin:0 0 6px 0">${esc(family.title)}</h2><p class="muted">${esc(family.description)}</p></section>
   <section class="stats"><article class="card"><span class="label">Use case</span><strong class="value" style="font-size:22px">${esc(family.useCase)}</strong></article><article class="card"><span class="label">Default age</span><strong class="value" style="font-size:22px">${esc(family.defaultAgeBand)}</strong></article><article class="card"><span class="label">Theme</span><strong class="value" style="font-size:22px">${esc(family.theme)}</strong></article><article class="card"><span class="label">Derivative score</span><strong class="value" style="font-size:22px">${family.derivativePotentialScore}</strong></article><article class="card"><span class="label">Bundles</span><strong class="value" style="font-size:22px">${bundleMatches.length}</strong></article></section>
   <section class="grid2"><article class="panel"><h3 style="margin-top:0">SKUs in this family</h3><table><thead><tr><th>SKU</th><th>Age</th><th>Theme</th><th>Orders</th><th>Etsy price</th></tr></thead><tbody>${skus.map((sku)=>`<tr><td><a href="/skus/${sku.id}">${esc(sku.title)}</a></td><td>${esc(sku.ageBand)}</td><td>${esc(sku.theme)}</td><td>${sku.latestSnapshot ? sku.latestSnapshot.orders : 0}</td><td>${money(sku.priceEtsy)}</td></tr>`).join('')}</tbody></table></article><article class="panel"><h3 style="margin-top:0">Bundles using this family</h3>${bundleMatches.map((b)=>`<div class="row"><div><strong>${esc(b.title)}</strong><div class="muted">${esc(b.bundleType)} · Etsy ${money(b.priceEtsy)}</div></div></div>`).join('')}</article></section>
-  <section class="grid2"><article class="panel"><h3 style="margin-top:0">Listings</h3><table><thead><tr><th>Channel</th><th>Title</th><th>Status</th><th>Price</th></tr></thead><tbody>${familyListings.map((l)=>`<tr><td>${esc(l.channel)}</td><td>${esc(l.title)}</td><td>${badge(l.status)}</td><td>${money(l.price)}</td></tr>`).join('')}</tbody></table></article><article class="panel"><h3 style="margin-top:0">Derivative opportunities</h3>${familyOpps.map((opp)=>`<div class="row"><div><strong>${esc(opp.headline)}</strong><p class="muted">${esc(opp.why)}</p></div><button class="btn" type="button" data-derivative-owner-type="${esc(opp.sourceOwnerType)}" data-derivative-owner="${esc(opp.sourceOwnerId)}" data-derivative-type="${esc(opp.derivativeType)}" data-derivative-notes="${esc(opp.recommendedOutput)}">Plan job</button></div>`).join('')}</article></section>
-  <section class="panel"><h3 style="margin-top:0">Derivative jobs</h3><table><thead><tr><th>Type</th><th>Status</th><th>Reason</th><th>Notes</th></tr></thead><tbody>${familyJobs.map((job)=>`<tr><td>${esc(job.derivativeType)}</td><td>${badge(job.jobStatus)}</td><td>${esc(job.ruleTriggeredBy||'—')}</td><td>${esc(job.notes||'—')}</td></tr>`).join('')}</tbody></table></section>`;
+  <section class="grid2"><article class="panel"><h3 style="margin-top:0">Listings</h3><table><thead><tr><th>Channel</th><th>Title</th><th>Status</th><th>Price</th></tr></thead><tbody>${familyListings.map((l)=>`<tr><td>${esc(l.channel)}</td><td>${esc(l.title)}</td><td>${badge(l.status,'teal')}</td><td>${money(l.price)}</td></tr>`).join('')}</tbody></table></article><article class="panel"><h3 style="margin-top:0">Derivative opportunities</h3>${familyOpps.map((opp)=>`<div class="row"><div><strong>${esc(opp.headline)}</strong><p class="muted">${esc(opp.why)}</p></div><button class="btn" type="button" data-derivative-owner-type="${esc(opp.sourceOwnerType)}" data-derivative-owner="${esc(opp.sourceOwnerId)}" data-derivative-type="${esc(opp.derivativeType)}" data-derivative-notes="${esc(opp.recommendedOutput)}">Plan job</button></div>`).join('')}</article></section>
+  <section class="panel"><h3 style="margin-top:0">Derivative jobs</h3><table><thead><tr><th>Type</th><th>Status</th><th>Reason</th><th>Notes</th></tr></thead><tbody>${familyJobs.map((job)=>`<tr><td>${esc(job.derivativeType)}</td><td>${badge(job.jobStatus,'plum')}</td><td>${esc(job.ruleTriggeredBy||'—')}</td><td>${esc(job.notes||'—')}</td></tr>`).join('')}</tbody></table></section>`;
   res.send(shell(family.title, req.path, body));
 });
 
@@ -193,7 +202,7 @@ app.get('/skus', (req, res) => {
   const useCases = [...new Set(catalog.skus.map((s) => s.useCase).filter(Boolean))].sort();
   const body = `<section style="margin-bottom:22px"><div class="eyebrow">Catalog</div><h2 style="margin:0 0 6px 0">SKUs</h2><p class="muted">Age-band and theme variants generated from Busy Little Happy's launch families.</p></section>
   <form class="filters" method="GET" action="/skus"><input type="text" name="q" value="${esc(q)}" placeholder="Search SKUs"/><select name="ageBand"><option value="">All age bands</option>${ageBands.map((a)=>`<option value="${esc(a)}" ${ageBand===a?'selected':''}>${esc(a)}</option>`).join('')}</select><select name="useCase"><option value="">All use cases</option>${useCases.map((u)=>`<option value="${esc(u)}" ${useCase===u?'selected':''}>${esc(u)}</option>`).join('')}</select><button class="btn primary" type="submit">Filter</button></form>
-  <section class="panel"><table><thead><tr><th>SKU</th><th>Age</th><th>Use case</th><th>Theme</th><th>Etsy price</th><th>Orders</th><th>QA</th></tr></thead><tbody>${skus.map((s)=>`<tr><td><a href="/skus/${s.id}">${esc(s.title)}</a><div class="muted small">${esc(s.subtitle)}</div></td><td>${esc(s.ageBand)}</td><td>${esc(s.useCase)}</td><td>${esc(s.theme)}</td><td>${money(s.priceEtsy)}</td><td>${s.latestSnapshot ? s.latestSnapshot.orders : 0}</td><td>${badge(s.qaStatus)}</td></tr>`).join('')}</tbody></table></section>`;
+  <section class="panel"><table><thead><tr><th>SKU</th><th>Age</th><th>Use case</th><th>Theme</th><th>Etsy price</th><th>Orders</th><th>QA</th></tr></thead><tbody>${skus.map((s)=>`<tr><td><a href="/skus/${s.id}">${esc(s.title)}</a><div class="muted small">${esc(s.subtitle)}</div></td><td>${esc(s.ageBand)}</td><td>${esc(s.useCase)}</td><td>${esc(s.theme)}</td><td>${money(s.priceEtsy)}</td><td>${s.latestSnapshot ? s.latestSnapshot.orders : 0}</td><td>${badge(s.qaStatus,'gold')}</td></tr>`).join('')}</tbody></table></section>`;
   res.send(shell('SKUs', req.path, body));
 });
 
@@ -208,8 +217,8 @@ app.get('/skus/:id', (req, res) => {
   const derivativeOpportunities = catalog.derivativeOpportunities.filter((opp) => opp.sourceOwnerType === 'sku' && opp.sourceOwnerId === sku.id);
   const body = `<section style="margin-bottom:22px"><div class="eyebrow"><a href="/skus">SKUs</a></div><h2 style="margin:0 0 6px 0">${esc(sku.title)}</h2><p class="muted">${esc(sku.subtitle)}</p></section>
   <section class="stats"><article class="card"><span class="label">Family</span><strong class="value" style="font-size:20px"><a href="/families/${family.id}">${esc(family.title)}</a></strong></article><article class="card"><span class="label">Age band</span><strong class="value" style="font-size:20px">${esc(sku.ageBand)}</strong></article><article class="card"><span class="label">Theme</span><strong class="value" style="font-size:20px">${esc(sku.theme)}</strong></article><article class="card"><span class="label">Format</span><strong class="value" style="font-size:20px">${esc(sku.formatType)}</strong></article><article class="card"><span class="label">Etsy price</span><strong class="value" style="font-size:20px">${money(sku.priceEtsy)}</strong></article></section>
-  <section class="grid2"><article class="panel"><h3 style="margin-top:0">Channel listings</h3><table><thead><tr><th>Channel</th><th>Status</th><th>Sync</th><th>Price</th></tr></thead><tbody>${listings.map((l)=>`<tr><td>${esc(l.channel)}</td><td>${badge(l.status)}</td><td>${esc(l.syncStatus)}</td><td>${money(l.price)}</td></tr>`).join('')}</tbody></table></article><article class="panel"><h3 style="margin-top:0">Performance snapshots</h3><table><thead><tr><th>Date</th><th>Impr.</th><th>Clicks</th><th>Orders</th><th>Net revenue</th></tr></thead><tbody>${snapshots.map((s)=>`<tr><td>${esc(s.snapshotDate)}</td><td>${s.impressions}</td><td>${s.clicks}</td><td>${s.orders}</td><td>${money(s.netRevenueEstimate)}</td></tr>`).join('')}</tbody></table></article></section>
-  <section class="grid2"><article class="panel"><h3 style="margin-top:0">Derivative opportunities</h3>${derivativeOpportunities.length ? derivativeOpportunities.map((opp)=>`<div class="row"><div><strong>${esc(opp.headline)}</strong><p class="muted">${esc(opp.why)}</p></div><button class="btn" type="button" data-derivative-owner-type="${esc(opp.sourceOwnerType)}" data-derivative-owner="${esc(opp.sourceOwnerId)}" data-derivative-type="${esc(opp.derivativeType)}" data-derivative-notes="${esc(opp.recommendedOutput)}">Plan job</button></div>`).join('') : '<div class="muted">No SKU-specific opportunities yet. Strongest ideas are family-level expansions.</div>'}</article><article class="panel"><h3 style="margin-top:0">Derivative jobs</h3><table><thead><tr><th>Type</th><th>Status</th><th>Reason</th><th>Notes</th></tr></thead><tbody>${derivativeJobs.map((job)=>`<tr><td>${esc(job.derivativeType)}</td><td>${badge(job.jobStatus)}</td><td>${esc(job.ruleTriggeredBy||'—')}</td><td>${esc(job.notes||'—')}</td></tr>`).join('')}</tbody></table></article></section>`;
+  <section class="grid2"><article class="panel"><h3 style="margin-top:0">Channel listings</h3><table><thead><tr><th>Channel</th><th>Status</th><th>Sync</th><th>Price</th></tr></thead><tbody>${listings.map((l)=>`<tr><td>${esc(l.channel)}</td><td>${badge(l.status,'teal')}</td><td>${esc(l.syncStatus)}</td><td>${money(l.price)}</td></tr>`).join('')}</tbody></table></article><article class="panel"><h3 style="margin-top:0">Performance snapshots</h3><table><thead><tr><th>Date</th><th>Impr.</th><th>Clicks</th><th>Orders</th><th>Net revenue</th></tr></thead><tbody>${snapshots.map((s)=>`<tr><td>${esc(s.snapshotDate)}</td><td>${s.impressions}</td><td>${s.clicks}</td><td>${s.orders}</td><td>${money(s.netRevenueEstimate)}</td></tr>`).join('')}</tbody></table></article></section>
+  <section class="grid2"><article class="panel"><h3 style="margin-top:0">Derivative opportunities</h3>${derivativeOpportunities.length ? derivativeOpportunities.map((opp)=>`<div class="row"><div><strong>${esc(opp.headline)}</strong><p class="muted">${esc(opp.why)}</p></div><button class="btn" type="button" data-derivative-owner-type="${esc(opp.sourceOwnerType)}" data-derivative-owner="${esc(opp.sourceOwnerId)}" data-derivative-type="${esc(opp.derivativeType)}" data-derivative-notes="${esc(opp.recommendedOutput)}">Plan job</button></div>`).join('') : '<div class="muted">No SKU-specific opportunities yet. Strongest ideas are family-level expansions.</div>'}</article><article class="panel"><h3 style="margin-top:0">Derivative jobs</h3><table><thead><tr><th>Type</th><th>Status</th><th>Reason</th><th>Notes</th></tr></thead><tbody>${derivativeJobs.map((job)=>`<tr><td>${esc(job.derivativeType)}</td><td>${badge(job.jobStatus,'plum')}</td><td>${esc(job.ruleTriggeredBy||'—')}</td><td>${esc(job.notes||'—')}</td></tr>`).join('')}</tbody></table></article></section>`;
   res.send(shell(sku.title, req.path, body));
 });
 
@@ -230,7 +239,7 @@ app.get('/channels', (req, res) => {
   const summary = getChannelSummary();
   const body = `<section style="margin-bottom:22px"><div class="eyebrow">Distribution</div><h2 style="margin:0 0 6px 0">Channels</h2><p class="muted">Etsy-first, Gumroad-second, KDP-later channel model inherited from the business plan.</p></section>
   <section class="panel"><h3 style="margin-top:0">Channel summary</h3><table><thead><tr><th>Channel</th><th>Listings</th><th>Live</th><th>Total list price</th></tr></thead><tbody>${summary.map((r)=>`<tr><td>${esc(r.channel)}</td><td>${r.listing_count}</td><td>${r.live_count}</td><td>${money(r.total_list_price)}</td></tr>`).join('')}</tbody></table></section>
-  ${Object.entries(grouped).map(([channel, items])=>`<section class="panel"><h3 style="margin-top:0">${esc(channel)} listings</h3><table><thead><tr><th>Owner</th><th>Title</th><th>Status</th><th>Sync</th><th>Price</th></tr></thead><tbody>${items.map((l)=>`<tr><td>${esc(l.ownerType)}:${esc(l.ownerId)}</td><td>${esc(l.title)}</td><td>${badge(l.status)}</td><td>${esc(l.syncStatus)}</td><td>${money(l.price)}</td></tr>`).join('')}</tbody></table></section>`).join('')}`;
+  ${Object.entries(grouped).map(([channel, items])=>`<section class="panel"><h3 style="margin-top:0">${esc(channel)} listings</h3><table><thead><tr><th>Owner</th><th>Title</th><th>Status</th><th>Sync</th><th>Price</th></tr></thead><tbody>${items.map((l)=>`<tr><td>${esc(l.ownerType)}:${esc(l.ownerId)}</td><td>${esc(l.title)}</td><td>${badge(l.status,'teal')}</td><td>${esc(l.syncStatus)}</td><td>${money(l.price)}</td></tr>`).join('')}</tbody></table></section>`).join('')}`;
   res.send(shell('Channels', req.path, body));
 });
 
