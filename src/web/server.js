@@ -1,8 +1,3 @@
-/**
- * Pancake Robot — Web UI Server
- * Run with: npm run web  (node src/web/server.js)
- */
-
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -10,806 +5,256 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const _require = createRequire(import.meta.url);
-
 const dotenv = _require('dotenv');
 dotenv.config({ path: join(__dirname, '../../.env'), override: true });
 
 import express from 'express';
-import expressLayouts from 'express-ejs-layouts';
-import fs from 'fs';
-import { spawn } from 'child_process';
-
 import {
-  getAllIdeas, getIdea, createIdea, updateIdea,
-  getAllSongs, getSong, upsertSong, deleteSong,
-  getAssetsForSong, createAsset,
-  getPublishingChecklist, updateChecklistItem, getChecklistProgress,
-  getReleaseLinks, upsertReleaseLink,
+  getAllProductFamilies,
+  getProductFamily,
+  getAllSkus,
+  getSku,
+  getSkusForFamily,
+  getAllBundles,
+  getChannelListings,
   getPerformanceSnapshots,
+  getDerivativeJobs,
+  createDerivativeJob,
+  updateDerivativeJobStatus,
   getDashboardStats,
+  getChannelSummary,
+  getTopPerformers,
 } from '../shared/db.js';
-import { runSuggestPipeline } from '../shared/suggest.js';
-import { generateThumbnails } from '../agents/creative-manager.js';
-
-// In-memory job store for suggest runs
-const suggestJobs = new Map(); // jobId → { status, logs, results, error }
-
-// In-memory job store for full song pipeline runs
-const pipelineJobs = new Map(); // jobId → { status, logs, songId, error, startedAt }
+import { buildDerivativeOpportunities } from '../shared/derivatives.js';
+import { seedBusyLittleHappyCatalog } from '../orchestrator.js';
 
 const app = express();
-const PORT = process.env.WEB_PORT || 3737;
+const PORT = Number(process.env.WEB_PORT || 3737);
 
-// ── Middleware ──────────────────────────────────────────────────
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(join(__dirname, 'public')));
-// Serve generated output files (audio, thumbnails) under /media/
-app.use('/media', express.static(join(__dirname, '../../output')));
-app.set('view engine', 'ejs');
-app.set('views', join(__dirname, 'views'));
-app.use(expressLayouts);
-app.set('layout', 'layout');
-// extractScripts: false — scripts stay inline in the view (needed for Alpine.js x-data references)
-app.set('layout extractScripts', false);
+app.use(express.json());
 
-// ── Helpers injected into every template ───────────────────────
-app.use((req, res, next) => {
-  res.locals.formatDate = (iso) => {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-  res.locals.timeAgo = (iso) => {
-    if (!iso) return '—';
-    const secs = Math.floor((Date.now() - new Date(iso)) / 1000);
-    if (secs < 60) return `${secs}s ago`;
-    if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
-    if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
-    return `${Math.floor(secs / 86400)}d ago`;
-  };
-  res.locals.statusBadge = (status) => {
-    const map = {
-      new: 'badge-gray',
-      shortlisted: 'badge-blue',
-      in_review: 'badge-yellow',
-      promoted: 'badge-green',
-      archived: 'badge-dim',
-      draft: 'badge-gray',
-      writing: 'badge-yellow',
-      lyrics_ready: 'badge-blue',
-      audio_in_progress: 'badge-yellow',
-      audio_ready: 'badge-blue',
-      artwork_ready: 'badge-blue',
-      metadata_ready: 'badge-blue',
-      ready_to_publish: 'badge-green',
-      submitted_to_tunecore: 'badge-purple',
-      published: 'badge-emerald',
-      paused: 'badge-gray',
-      approved: 'badge-green',
-      rejected: 'badge-red',
-    };
-    return map[status] || 'badge-gray';
-  };
-  res.locals.currentPath = req.path;
-  next();
-});
+function money(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  return `$${Number(value).toFixed(2)}`;
+}
 
-// ── DASHBOARD ──────────────────────────────────────────────────
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function badge(value) {
+  return `<span style="display:inline-block;padding:4px 8px;border-radius:999px;background:#fff1cc;color:#7a5400;font-size:12px;font-weight:700;">${esc(value)}</span>`;
+}
+
+function shell(title, currentPath, body) {
+  const nav = [
+    ['/', 'Dashboard'],
+    ['/families', 'Families'],
+    ['/skus', 'SKUs'],
+    ['/bundles', 'Bundles'],
+    ['/channels', 'Channels'],
+  ].map(([href, label]) => {
+    const active = currentPath === href || (href !== '/' && currentPath.startsWith(href));
+    return `<a href="${href}" style="display:block;padding:10px 12px;border-radius:12px;text-decoration:none;font-weight:700;color:${active ? '#2c261f' : '#756a5a'};background:${active ? 'rgba(255,184,77,.18)' : 'transparent'};">${label}</a>`;
+  }).join('');
+
+  return `<!doctype html>
+  <html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>${esc(title)}</title>
+  <style>
+    :root{--bg:#fffaf3;--panel:#fff;--sidebar:#fff3de;--border:#f0dec0;--text:#2c261f;--muted:#756a5a;--shadow:0 10px 30px rgba(48,32,8,.08)}
+    *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#fffaf3 0%,#fff8ef 100%);color:var(--text);font:14px/1.45 Inter,system-ui,sans-serif}
+    a{color:inherit} .shell{display:grid;grid-template-columns:280px 1fr;min-height:100vh} .sidebar{background:var(--sidebar);border-right:1px solid var(--border);padding:28px 22px}
+    .brand{display:flex;gap:14px;align-items:center;margin-bottom:26px}.mark{width:52px;height:52px;border-radius:18px;background:linear-gradient(180deg,#ffd98c 0%,#ffb84d 100%);display:grid;place-items:center;font-size:24px;box-shadow:var(--shadow)}
+    .eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:var(--muted);margin-bottom:6px} .main{padding:28px}
+    .card,.panel{background:var(--panel);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow)} .card{padding:18px 20px}.panel{padding:18px;margin-bottom:18px}
+    .stats{display:grid;gap:14px;grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:22px}.label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}.value{display:block;font-size:28px;margin-top:10px;font-weight:800}
+    .grid2{display:grid;gap:18px;grid-template-columns:1fr 1fr} table{width:100%;border-collapse:collapse} th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+    th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)} .muted{color:var(--muted)} .small{font-size:12px}
+    .row{display:flex;justify-content:space-between;align-items:start;gap:16px;padding:14px;border:1px solid var(--border);border-radius:16px;background:#fffdfa;margin-bottom:12px}
+    .btn{border:1px solid var(--border);padding:10px 12px;border-radius:12px;background:#fff;cursor:pointer;font:inherit;font-weight:700}.btn.primary{background:linear-gradient(180deg,#ffcf6e 0%,#ffb84d 100%)}
+    .filters{display:flex;gap:12px;margin-bottom:18px}.filters input,.filters select{border-radius:12px;border:1px solid var(--border);padding:10px 12px;background:#fff;font:inherit}
+    @media(max-width:1100px){.shell{grid-template-columns:1fr}.stats,.grid2{grid-template-columns:1fr}}
+  </style></head><body><div class="shell"><aside class="sidebar">
+  <div class="brand"><div class="mark">☀️</div><div><div class="eyebrow">Busy Little Happy</div><h1 style="margin:0;font-size:24px">Catalog Admin</h1></div></div>
+  <nav>${nav}</nav>
+  <div class="card"><h3 style="margin-top:0">Quick action</h3><button id="seed" class="btn primary" type="button">Reseed demo catalog</button><p class="muted small">Reset the repo to the 1.0 launch shelf.</p></div>
+  </aside><main class="main">${body}</main></div>
+  <script>
+  const seedBtn=document.getElementById('seed');
+  if(seedBtn){seedBtn.onclick=async()=>{seedBtn.disabled=true;seedBtn.textContent='Reseeding...';const r=await fetch('/api/seed',{method:'POST'});if(r.ok) location.reload(); else {alert('Reseed failed'); seedBtn.disabled=false; seedBtn.textContent='Reseed demo catalog';}}}
+  async function createDerivativeJob(payload){const r=await fetch('/api/derivative-jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok) throw new Error(d.error||'Could not create job');return d;}
+  document.addEventListener('click', async (e)=>{const btn=e.target.closest('[data-derivative-owner]'); if(!btn) return; btn.disabled=true; const original=btn.textContent; btn.textContent='Creating...'; try{await createDerivativeJob({sourceOwnerType:btn.dataset.derivativeOwnerType,sourceOwnerId:btn.dataset.derivativeOwner,derivativeType:btn.dataset.derivativeType,notes:btn.dataset.derivativeNotes||''}); location.reload();}catch(err){alert(err.message);btn.disabled=false;btn.textContent=original;}});
+  </script></body></html>`;
+}
+
+function getCatalogState() {
+  let families = getAllProductFamilies();
+  if (!families.length) {
+    seedBusyLittleHappyCatalog();
+    families = getAllProductFamilies();
+  }
+  const skus = getAllSkus();
+  const bundles = getAllBundles();
+  const listings = getChannelListings();
+  const snapshots = getPerformanceSnapshots();
+  const derivativeJobs = getDerivativeJobs();
+  const derivativeOpportunities = buildDerivativeOpportunities({ families, skus, bundles, snapshots, derivativeJobs });
+  return { families, skus, bundles, listings, snapshots, derivativeJobs, derivativeOpportunities };
+}
+
+function attachPerformance(skus, snapshots) {
+  const latestBySku = {};
+  for (const snap of snapshots.filter((item) => item.ownerType === 'sku')) {
+    if (!latestBySku[snap.ownerId] || latestBySku[snap.ownerId].snapshotDate < snap.snapshotDate) latestBySku[snap.ownerId] = snap;
+  }
+  return skus.map((sku) => ({ ...sku, latestSnapshot: latestBySku[sku.id] || null }));
+}
+
 app.get('/', (req, res) => {
+  const catalog = getCatalogState();
   const stats = getDashboardStats();
-  const recentSongs = getAllSongs().slice(0, 5).map(s => ({
-    ...s,
-    progress: getChecklistProgress(s.id),
-  }));
-  const recentIdeas = getAllIdeas().slice(0, 5);
-  res.render('dashboard', { stats, recentSongs, recentIdeas });
-});
-
-// ── IDEA GENERATOR (AI pipeline) ───────────────────────────────
-
-// Page: shows generate UI / live stream / results
-app.get('/ideas/generate', (req, res) => {
-  const { job } = req.query;
-  const jobData = job ? suggestJobs.get(job) : null;
-  res.render('ideas/generate', { jobId: job || null, jobData: jobData || null });
-});
-
-// POST: kick off a new suggest job, redirect to SSE page
-app.post('/api/suggest/run', (req, res) => {
-  const jobId = `job_${Date.now().toString(36)}`;
-  suggestJobs.set(jobId, { status: 'running', logs: [], results: null, error: null, startedAt: Date.now() });
-
-  // Run async — don't await
-  runSuggestPipeline((msg) => {
-    const job = suggestJobs.get(jobId);
-    if (job) job.logs.push(msg);
-  }).then((results) => {
-    const job = suggestJobs.get(jobId);
-    if (job) { job.status = 'done'; job.results = results; }
-  }).catch((err) => {
-    const job = suggestJobs.get(jobId);
-    if (job) { job.status = 'error'; job.error = err.message; }
+  const channels = getChannelSummary();
+  const topPerformers = getTopPerformers();
+  const families = catalog.families.slice(0, 6).map((family) => {
+    const familySkus = catalog.skus.filter((sku) => sku.productFamilyId === family.id);
+    const skuIds = new Set(familySkus.map((sku) => sku.id));
+    return { ...family, skuCount: familySkus.length, liveListingCount: catalog.listings.filter((listing) => listing.status === 'live' && skuIds.has(listing.ownerId)).length };
   });
 
-  res.json({ ok: true, jobId });
+  const body = `
+    <section style="margin-bottom:22px"><div class="eyebrow">Busy Little Happy 1.0</div><h2 style="margin:0 0 6px 0">Dashboard</h2><p class="muted">Pancake Robot's catalog workflow, repurposed for screen-free kids activity packs.</p></section>
+    <section class="stats">
+      <article class="card"><span class="label">Families</span><strong class="value">${stats.families}</strong></article>
+      <article class="card"><span class="label">SKUs</span><strong class="value">${stats.skus}</strong></article>
+      <article class="card"><span class="label">Bundles</span><strong class="value">${stats.bundles}</strong></article>
+      <article class="card"><span class="label">Live listings</span><strong class="value">${stats.liveListings}</strong></article>
+      <article class="card"><span class="label">Estimated net revenue</span><strong class="value">${money(stats.estimatedNetRevenue)}</strong></article>
+    </section>
+    <section class="grid2">
+      <article class="panel"><h3 style="margin-top:0">Launch families</h3><table><thead><tr><th>Family</th><th>Use case</th><th>SKUs</th><th>Live</th></tr></thead><tbody>${families.map((f)=>`<tr><td><a href="/families/${f.id}">${esc(f.title)}</a></td><td>${esc(f.useCase)}</td><td>${f.skuCount}</td><td>${f.liveListingCount}</td></tr>`).join('')}</tbody></table></article>
+      <article class="panel"><h3 style="margin-top:0">Channel summary</h3><table><thead><tr><th>Channel</th><th>Listings</th><th>Live</th><th>Total list price</th></tr></thead><tbody>${channels.map((row)=>`<tr><td>${esc(row.channel)}</td><td>${row.listing_count}</td><td>${row.live_count}</td><td>${money(row.total_list_price)}</td></tr>`).join('')}</tbody></table></article>
+    </section>
+    <section class="grid2">
+      <article class="panel"><h3 style="margin-top:0">Top performers</h3><table><thead><tr><th>Owner</th><th>Orders</th><th>Net revenue</th></tr></thead><tbody>${topPerformers.map((p)=>`<tr><td>${esc(p.owner_type)}:${esc(p.owner_id)}</td><td>${p.total_orders}</td><td>${money(p.total_net_revenue)}</td></tr>`).join('')}</tbody></table></article>
+      <article class="panel"><h3 style="margin-top:0">Derivative opportunities</h3>${catalog.derivativeOpportunities.slice(0,8).map((opp)=>`<div class="row"><div><strong>${esc(opp.headline)}</strong><p class="muted">${esc(opp.why)}</p></div><button class="btn" type="button" data-derivative-owner-type="${esc(opp.sourceOwnerType)}" data-derivative-owner="${esc(opp.sourceOwnerId)}" data-derivative-type="${esc(opp.derivativeType)}" data-derivative-notes="${esc(opp.recommendedOutput)}">Plan job</button></div>`).join('')}</article>
+    </section>
+    <section class="panel"><h3 style="margin-top:0">Existing derivative jobs</h3><table><thead><tr><th>Source</th><th>Type</th><th>Status</th><th>Notes</th></tr></thead><tbody>${catalog.derivativeJobs.slice(0,8).map((job)=>`<tr><td>${esc(job.sourceOwnerType)}:${esc(job.sourceOwnerId)}</td><td>${esc(job.derivativeType)}</td><td>${badge(job.jobStatus)}</td><td>${esc(job.notes||'—')}</td></tr>`).join('')}</tbody></table></section>`;
+  res.send(shell('Busy Little Happy Dashboard', req.path, body));
 });
 
-// GET SSE: stream logs + completion event
-app.get('/api/suggest/stream/:jobId', (req, res) => {
-  const { jobId } = req.params;
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
-
-  let lastLogIndex = 0;
-
-  const send = (event, data) => {
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-  };
-
-  const tick = () => {
-    const job = suggestJobs.get(jobId);
-    if (!job) { send('error', { message: 'Job not found' }); res.end(); return; }
-
-    // Send any new log lines
-    const newLogs = job.logs.slice(lastLogIndex);
-    for (const line of newLogs) {
-      send('log', { message: line });
-    }
-    lastLogIndex = job.logs.length;
-
-    if (job.status === 'done') {
-      send('complete', { results: job.results });
-      res.end();
-    } else if (job.status === 'error') {
-      send('error', { message: job.error });
-      res.end();
-    } else {
-      setTimeout(tick, 500);
-    }
-  };
-
-  req.on('close', () => { /* client disconnected */ });
-  tick();
-});
-
-// GET: job status/results (for polling fallback)
-app.get('/api/suggest/status/:jobId', (req, res) => {
-  const job = suggestJobs.get(req.params.jobId);
-  if (!job) return res.status(404).json({ error: 'Job not found' });
-  res.json(job);
-});
-
-// ── IDEAS ──────────────────────────────────────────────────────
-app.get('/ideas', (req, res) => {
-  let ideas = getAllIdeas();
-  const { q, status, category } = req.query;
-  if (q) {
-    const lq = q.toLowerCase();
-    ideas = ideas.filter(i =>
-      (i.title || '').toLowerCase().includes(lq) ||
-      (i.concept || '').toLowerCase().includes(lq) ||
-      (i.hook || '').toLowerCase().includes(lq) ||
-      (i.tags || []).some(t => t.toLowerCase().includes(lq))
-    );
-  }
-  if (status) ideas = ideas.filter(i => i.status === status);
-  if (category) ideas = ideas.filter(i => i.category === category);
-
-  const categories = [...new Set(getAllIdeas().map(i => i.category).filter(Boolean))].sort();
-  res.render('ideas/index', { ideas, q: q || '', filterStatus: status || '', filterCategory: category || '', categories });
-});
-
-app.get('/ideas/new', (req, res) => {
-  res.render('ideas/form', { idea: null, error: null });
-});
-
-app.post('/ideas', (req, res) => {
-  const { title, concept, hook, target_age_range, category, mood, educational_angle, tags, lyric_seed, thumbnail_seed, notes } = req.body;
-  if (!title || !title.trim()) {
-    return res.render('ideas/form', { idea: req.body, error: 'Title is required.' });
-  }
-  createIdea({
-    title: title.trim(),
-    concept: concept?.trim() || null,
-    hook: hook?.trim() || null,
-    target_age_range: target_age_range || '4-10',
-    category: category?.trim() || null,
-    mood: mood?.trim() || null,
-    educational_angle: educational_angle?.trim() || null,
-    tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-    lyric_seed: lyric_seed?.trim() || null,
-    thumbnail_seed: thumbnail_seed?.trim() || null,
-    notes: notes?.trim() || null,
-    source_type: 'manual',
+app.get('/families', (req, res) => {
+  const catalog = getCatalogState();
+  let families = catalog.families.map((family) => {
+    const familySkus = catalog.skus.filter((sku) => sku.productFamilyId === family.id);
+    const skuIds = new Set(familySkus.map((sku) => sku.id));
+    return { ...family, skuCount: familySkus.length, liveListingCount: catalog.listings.filter((listing) => listing.status === 'live' && skuIds.has(listing.ownerId)).length };
   });
-  res.redirect('/ideas');
+  const q = String(req.query.q || '').trim().toLowerCase();
+  const useCase = String(req.query.useCase || '').trim().toLowerCase();
+  if (q) families = families.filter((f) => f.title.toLowerCase().includes(q) || (f.description || '').toLowerCase().includes(q) || (f.theme || '').toLowerCase().includes(q));
+  if (useCase) families = families.filter((f) => (f.useCase || '').toLowerCase() === useCase);
+  const useCases = [...new Set(catalog.families.map((f) => f.useCase).filter(Boolean))].sort();
+  const body = `<section style="margin-bottom:22px"><div class="eyebrow">Catalog</div><h2 style="margin:0 0 6px 0">Product families</h2><p class="muted">Reusable parent shelves for Busy Little Happy's travel and wait-time printables.</p></section>
+  <form class="filters" method="GET" action="/families"><input type="text" name="q" value="${esc(q)}" placeholder="Search families"/><select name="useCase"><option value="">All use cases</option>${useCases.map((u)=>`<option value="${esc(u)}" ${useCase===u?'selected':''}>${esc(u)}</option>`).join('')}</select><button class="btn primary" type="submit">Filter</button></form>
+  <section class="panel"><table><thead><tr><th>Family</th><th>Use case</th><th>Default age</th><th>Theme</th><th>SKUs</th><th>Live listings</th><th>Derivative score</th></tr></thead><tbody>${families.map((f)=>`<tr><td><a href="/families/${f.id}">${esc(f.title)}</a><div class="muted small">${esc(f.description)}</div></td><td>${esc(f.useCase)}</td><td>${esc(f.defaultAgeBand)}</td><td>${esc(f.theme)}</td><td>${f.skuCount}</td><td>${f.liveListingCount}</td><td>${f.derivativePotentialScore}</td></tr>`).join('')}</tbody></table></section>`;
+  res.send(shell('Product Families', req.path, body));
 });
 
-app.get('/ideas/:id', (req, res) => {
-  // Guard: don't catch named routes
-  if (req.params.id === 'generate' || req.params.id === 'new') return res.redirect('/ideas/' + req.params.id === 'generate' ? '/ideas/generate' : '/ideas/new');
-  const idea = getIdea(req.params.id);
-  if (!idea) return res.status(404).render('404', { message: 'Idea not found' });
-  const song = idea.promoted_song_id ? getSong(idea.promoted_song_id) : null;
-  res.render('ideas/detail', { idea, song });
+app.get('/families/:id', (req, res) => {
+  const catalog = getCatalogState();
+  const family = getProductFamily(req.params.id);
+  if (!family) return res.status(404).send(shell('Not found', req.path, `<h2>Product family not found</h2>`));
+  const skus = attachPerformance(getSkusForFamily(family.id), catalog.snapshots);
+  const skuIds = new Set(skus.map((sku) => sku.id));
+  const familyListings = catalog.listings.filter((listing) => skuIds.has(listing.ownerId));
+  const familyJobs = catalog.derivativeJobs.filter((job) => job.sourceOwnerType === 'family' && job.sourceOwnerId === family.id);
+  const familyOpps = catalog.derivativeOpportunities.filter((opp) => opp.sourceOwnerType === 'family' && opp.sourceOwnerId === family.id);
+  const bundleMatches = catalog.bundles.filter((bundle) => (bundle.skuIds || []).some((skuId) => skuIds.has(skuId)));
+  const body = `<section style="margin-bottom:22px"><div class="eyebrow"><a href="/families">Families</a></div><h2 style="margin:0 0 6px 0">${esc(family.title)}</h2><p class="muted">${esc(family.description)}</p></section>
+  <section class="stats"><article class="card"><span class="label">Use case</span><strong class="value" style="font-size:22px">${esc(family.useCase)}</strong></article><article class="card"><span class="label">Default age</span><strong class="value" style="font-size:22px">${esc(family.defaultAgeBand)}</strong></article><article class="card"><span class="label">Theme</span><strong class="value" style="font-size:22px">${esc(family.theme)}</strong></article><article class="card"><span class="label">Derivative score</span><strong class="value" style="font-size:22px">${family.derivativePotentialScore}</strong></article><article class="card"><span class="label">Bundles</span><strong class="value" style="font-size:22px">${bundleMatches.length}</strong></article></section>
+  <section class="grid2"><article class="panel"><h3 style="margin-top:0">SKUs in this family</h3><table><thead><tr><th>SKU</th><th>Age</th><th>Theme</th><th>Orders</th><th>Etsy price</th></tr></thead><tbody>${skus.map((sku)=>`<tr><td><a href="/skus/${sku.id}">${esc(sku.title)}</a></td><td>${esc(sku.ageBand)}</td><td>${esc(sku.theme)}</td><td>${sku.latestSnapshot ? sku.latestSnapshot.orders : 0}</td><td>${money(sku.priceEtsy)}</td></tr>`).join('')}</tbody></table></article><article class="panel"><h3 style="margin-top:0">Bundles using this family</h3>${bundleMatches.map((b)=>`<div class="row"><div><strong>${esc(b.title)}</strong><div class="muted">${esc(b.bundleType)} · Etsy ${money(b.priceEtsy)}</div></div></div>`).join('')}</article></section>
+  <section class="grid2"><article class="panel"><h3 style="margin-top:0">Listings</h3><table><thead><tr><th>Channel</th><th>Title</th><th>Status</th><th>Price</th></tr></thead><tbody>${familyListings.map((l)=>`<tr><td>${esc(l.channel)}</td><td>${esc(l.title)}</td><td>${badge(l.status)}</td><td>${money(l.price)}</td></tr>`).join('')}</tbody></table></article><article class="panel"><h3 style="margin-top:0">Derivative opportunities</h3>${familyOpps.map((opp)=>`<div class="row"><div><strong>${esc(opp.headline)}</strong><p class="muted">${esc(opp.why)}</p></div><button class="btn" type="button" data-derivative-owner-type="${esc(opp.sourceOwnerType)}" data-derivative-owner="${esc(opp.sourceOwnerId)}" data-derivative-type="${esc(opp.derivativeType)}" data-derivative-notes="${esc(opp.recommendedOutput)}">Plan job</button></div>`).join('')}</article></section>
+  <section class="panel"><h3 style="margin-top:0">Derivative jobs</h3><table><thead><tr><th>Type</th><th>Status</th><th>Reason</th><th>Notes</th></tr></thead><tbody>${familyJobs.map((job)=>`<tr><td>${esc(job.derivativeType)}</td><td>${badge(job.jobStatus)}</td><td>${esc(job.ruleTriggeredBy||'—')}</td><td>${esc(job.notes||'—')}</td></tr>`).join('')}</tbody></table></section>`;
+  res.send(shell(family.title, req.path, body));
 });
 
-app.get('/ideas/:id/edit', (req, res) => {
-  const idea = getIdea(req.params.id);
-  if (!idea) return res.status(404).render('404', { message: 'Idea not found' });
-  res.render('ideas/form', { idea, error: null });
+app.get('/skus', (req, res) => {
+  const catalog = getCatalogState();
+  let skus = attachPerformance(catalog.skus, catalog.snapshots);
+  const q = String(req.query.q || '').trim().toLowerCase();
+  const ageBand = String(req.query.ageBand || '').trim().toLowerCase();
+  const useCase = String(req.query.useCase || '').trim().toLowerCase();
+  if (q) skus = skus.filter((s) => s.title.toLowerCase().includes(q) || (s.subtitle || '').toLowerCase().includes(q) || (s.theme || '').toLowerCase().includes(q));
+  if (ageBand) skus = skus.filter((s) => (s.ageBand || '').toLowerCase() === ageBand);
+  if (useCase) skus = skus.filter((s) => (s.useCase || '').toLowerCase() === useCase);
+  const ageBands = [...new Set(catalog.skus.map((s) => s.ageBand).filter(Boolean))].sort();
+  const useCases = [...new Set(catalog.skus.map((s) => s.useCase).filter(Boolean))].sort();
+  const body = `<section style="margin-bottom:22px"><div class="eyebrow">Catalog</div><h2 style="margin:0 0 6px 0">SKUs</h2><p class="muted">Age-band and theme variants generated from Busy Little Happy's launch families.</p></section>
+  <form class="filters" method="GET" action="/skus"><input type="text" name="q" value="${esc(q)}" placeholder="Search SKUs"/><select name="ageBand"><option value="">All age bands</option>${ageBands.map((a)=>`<option value="${esc(a)}" ${ageBand===a?'selected':''}>${esc(a)}</option>`).join('')}</select><select name="useCase"><option value="">All use cases</option>${useCases.map((u)=>`<option value="${esc(u)}" ${useCase===u?'selected':''}>${esc(u)}</option>`).join('')}</select><button class="btn primary" type="submit">Filter</button></form>
+  <section class="panel"><table><thead><tr><th>SKU</th><th>Age</th><th>Use case</th><th>Theme</th><th>Etsy price</th><th>Orders</th><th>QA</th></tr></thead><tbody>${skus.map((s)=>`<tr><td><a href="/skus/${s.id}">${esc(s.title)}</a><div class="muted small">${esc(s.subtitle)}</div></td><td>${esc(s.ageBand)}</td><td>${esc(s.useCase)}</td><td>${esc(s.theme)}</td><td>${money(s.priceEtsy)}</td><td>${s.latestSnapshot ? s.latestSnapshot.orders : 0}</td><td>${badge(s.qaStatus)}</td></tr>`).join('')}</tbody></table></section>`;
+  res.send(shell('SKUs', req.path, body));
 });
 
-app.post('/ideas/:id', (req, res) => {
-  const { title, concept, hook, target_age_range, category, mood, educational_angle, tags, lyric_seed, thumbnail_seed, notes } = req.body;
-  if (!title || !title.trim()) {
-    const idea = getIdea(req.params.id);
-    return res.render('ideas/form', { idea: { ...idea, ...req.body }, error: 'Title is required.' });
+app.get('/skus/:id', (req, res) => {
+  const catalog = getCatalogState();
+  const sku = getSku(req.params.id);
+  if (!sku) return res.status(404).send(shell('Not found', req.path, `<h2>SKU not found</h2>`));
+  const family = getProductFamily(sku.productFamilyId);
+  const listings = getChannelListings('sku', sku.id);
+  const snapshots = getPerformanceSnapshots('sku', sku.id);
+  const derivativeJobs = getDerivativeJobs('sku', sku.id);
+  const derivativeOpportunities = catalog.derivativeOpportunities.filter((opp) => opp.sourceOwnerType === 'sku' && opp.sourceOwnerId === sku.id);
+  const body = `<section style="margin-bottom:22px"><div class="eyebrow"><a href="/skus">SKUs</a></div><h2 style="margin:0 0 6px 0">${esc(sku.title)}</h2><p class="muted">${esc(sku.subtitle)}</p></section>
+  <section class="stats"><article class="card"><span class="label">Family</span><strong class="value" style="font-size:20px"><a href="/families/${family.id}">${esc(family.title)}</a></strong></article><article class="card"><span class="label">Age band</span><strong class="value" style="font-size:20px">${esc(sku.ageBand)}</strong></article><article class="card"><span class="label">Theme</span><strong class="value" style="font-size:20px">${esc(sku.theme)}</strong></article><article class="card"><span class="label">Format</span><strong class="value" style="font-size:20px">${esc(sku.formatType)}</strong></article><article class="card"><span class="label">Etsy price</span><strong class="value" style="font-size:20px">${money(sku.priceEtsy)}</strong></article></section>
+  <section class="grid2"><article class="panel"><h3 style="margin-top:0">Channel listings</h3><table><thead><tr><th>Channel</th><th>Status</th><th>Sync</th><th>Price</th></tr></thead><tbody>${listings.map((l)=>`<tr><td>${esc(l.channel)}</td><td>${badge(l.status)}</td><td>${esc(l.syncStatus)}</td><td>${money(l.price)}</td></tr>`).join('')}</tbody></table></article><article class="panel"><h3 style="margin-top:0">Performance snapshots</h3><table><thead><tr><th>Date</th><th>Impr.</th><th>Clicks</th><th>Orders</th><th>Net revenue</th></tr></thead><tbody>${snapshots.map((s)=>`<tr><td>${esc(s.snapshotDate)}</td><td>${s.impressions}</td><td>${s.clicks}</td><td>${s.orders}</td><td>${money(s.netRevenueEstimate)}</td></tr>`).join('')}</tbody></table></article></section>
+  <section class="grid2"><article class="panel"><h3 style="margin-top:0">Derivative opportunities</h3>${derivativeOpportunities.length ? derivativeOpportunities.map((opp)=>`<div class="row"><div><strong>${esc(opp.headline)}</strong><p class="muted">${esc(opp.why)}</p></div><button class="btn" type="button" data-derivative-owner-type="${esc(opp.sourceOwnerType)}" data-derivative-owner="${esc(opp.sourceOwnerId)}" data-derivative-type="${esc(opp.derivativeType)}" data-derivative-notes="${esc(opp.recommendedOutput)}">Plan job</button></div>`).join('') : '<div class="muted">No SKU-specific opportunities yet. Strongest ideas are family-level expansions.</div>'}</article><article class="panel"><h3 style="margin-top:0">Derivative jobs</h3><table><thead><tr><th>Type</th><th>Status</th><th>Reason</th><th>Notes</th></tr></thead><tbody>${derivativeJobs.map((job)=>`<tr><td>${esc(job.derivativeType)}</td><td>${badge(job.jobStatus)}</td><td>${esc(job.ruleTriggeredBy||'—')}</td><td>${esc(job.notes||'—')}</td></tr>`).join('')}</tbody></table></article></section>`;
+  res.send(shell(sku.title, req.path, body));
+});
+
+app.get('/bundles', (req, res) => {
+  const bundles = getAllBundles().map((bundle) => ({ ...bundle, snapshots: getPerformanceSnapshots('bundle', bundle.id) }));
+  const body = `<section style="margin-bottom:22px"><div class="eyebrow">Catalog</div><h2 style="margin:0 0 6px 0">Bundles</h2><p class="muted">Higher-AOV offers assembled from Busy Little Happy's strongest single-pack SKUs.</p></section>
+  <section class="panel"><table><thead><tr><th>Bundle</th><th>Type</th><th>Channels</th><th>Etsy price</th><th>Orders</th></tr></thead><tbody>${bundles.map((b)=>`<tr><td><strong>${esc(b.title)}</strong><div class="muted small">${esc(b.notes)}</div></td><td>${esc(b.bundleType)}</td><td>${esc((b.channelAvailability||[]).join(', '))}</td><td>${money(b.priceEtsy)}</td><td>${b.snapshots[0] ? b.snapshots[0].orders : 0}</td></tr>`).join('')}</tbody></table></section>`;
+  res.send(shell('Bundles', req.path, body));
+});
+
+app.get('/channels', (req, res) => {
+  const listings = getChannelListings();
+  const grouped = {};
+  for (const listing of listings) {
+    if (!grouped[listing.channel]) grouped[listing.channel] = [];
+    grouped[listing.channel].push(listing);
   }
-  updateIdea(req.params.id, {
-    title: title.trim(),
-    concept: concept?.trim() || null,
-    hook: hook?.trim() || null,
-    target_age_range: target_age_range || '4-10',
-    category: category?.trim() || null,
-    mood: mood?.trim() || null,
-    educational_angle: educational_angle?.trim() || null,
-    tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-    lyric_seed: lyric_seed?.trim() || null,
-    thumbnail_seed: thumbnail_seed?.trim() || null,
-    notes: notes?.trim() || null,
-  });
-  res.redirect(`/ideas/${req.params.id}`);
+  const summary = getChannelSummary();
+  const body = `<section style="margin-bottom:22px"><div class="eyebrow">Distribution</div><h2 style="margin:0 0 6px 0">Channels</h2><p class="muted">Etsy-first, Gumroad-second, KDP-later channel model inherited from the business plan.</p></section>
+  <section class="panel"><h3 style="margin-top:0">Channel summary</h3><table><thead><tr><th>Channel</th><th>Listings</th><th>Live</th><th>Total list price</th></tr></thead><tbody>${summary.map((r)=>`<tr><td>${esc(r.channel)}</td><td>${r.listing_count}</td><td>${r.live_count}</td><td>${money(r.total_list_price)}</td></tr>`).join('')}</tbody></table></section>
+  ${Object.entries(grouped).map(([channel, items])=>`<section class="panel"><h3 style="margin-top:0">${esc(channel)} listings</h3><table><thead><tr><th>Owner</th><th>Title</th><th>Status</th><th>Sync</th><th>Price</th></tr></thead><tbody>${items.map((l)=>`<tr><td>${esc(l.ownerType)}:${esc(l.ownerId)}</td><td>${esc(l.title)}</td><td>${badge(l.status)}</td><td>${esc(l.syncStatus)}</td><td>${money(l.price)}</td></tr>`).join('')}</tbody></table></section>`).join('')}`;
+  res.send(shell('Channels', req.path, body));
 });
 
-// API: update idea status
-app.post('/api/ideas/:id/status', (req, res) => {
+app.post('/api/seed', (req, res) => {
+  const seeded = seedBusyLittleHappyCatalog();
+  res.json({ ok: true, families: seeded.families.length, skus: seeded.skus.length, bundles: seeded.bundles.length, listings: seeded.listings.length });
+});
+
+app.post('/api/derivative-jobs', (req, res) => {
+  const { sourceOwnerType, sourceOwnerId, derivativeType, notes } = req.body;
+  if (!sourceOwnerType || !sourceOwnerId || !derivativeType) return res.status(400).json({ error: 'sourceOwnerType, sourceOwnerId, and derivativeType are required' });
+  const id = createDerivativeJob({ sourceOwnerType, sourceOwnerId, derivativeType, ruleTriggeredBy: 'Created manually from admin UI', jobStatus: 'planned', outputOwnerIds: [], notes: notes || null });
+  res.json({ ok: true, id });
+});
+
+app.post('/api/derivative-jobs/:id/status', (req, res) => {
   const { status } = req.body;
-  const allowed = ['new', 'shortlisted', 'in_review', 'promoted', 'archived'];
-  if (!allowed.includes(status)) return res.status(400).json({ error: 'Invalid status' });
-  updateIdea(req.params.id, { status });
+  if (!status) return res.status(400).json({ error: 'status is required' });
+  updateDerivativeJobStatus(req.params.id, status);
   res.json({ ok: true });
 });
 
-// API: duplicate idea
-app.post('/api/ideas/:id/duplicate', (req, res) => {
-  const idea = getIdea(req.params.id);
-  if (!idea) return res.status(404).json({ error: 'Not found' });
-  const newId = createIdea({
-    ...idea,
-    id: undefined,
-    title: `${idea.title} (copy)`,
-    status: 'new',
-    promoted_song_id: null,
-    source_type: 'derived',
-    source_ref: idea.id,
-  });
-  res.json({ ok: true, id: newId });
-});
+app.use((req, res) => res.status(404).send(shell('Not found', req.path, `<section><div class="eyebrow">Not found</div><h2>Missing page</h2><p class="muted">Page not found: ${esc(req.path)}</p></section>`)));
 
-// Promote idea → song
-app.post('/api/ideas/:id/promote', (req, res) => {
-  const idea = getIdea(req.params.id);
-  if (!idea) return res.status(404).json({ error: 'Not found' });
-
-  const songId = `SONG_${Date.now().toString(36).toUpperCase()}_${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-  const slug = (idea.title || 'song').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-
-  upsertSong({
-    id: songId,
-    title: idea.title,
-    slug,
-    topic: idea.concept || idea.title,
-    status: 'draft',
-    originating_idea_id: idea.id,
-    concept: idea.concept || null,
-    target_age_range: idea.target_age_range || '4-10',
-    mood_tags: idea.mood ? [idea.mood] : [],
-    keywords: idea.tags || [],
-    notes: idea.notes || null,
-    distributor: 'TuneCore',
-  });
-
-  updateIdea(idea.id, { status: 'promoted', promoted_song_id: songId });
-
-  // Return generateUrl so the UI can redirect straight to the pipeline terminal
-  res.json({ ok: true, songId, generateUrl: `/songs/${songId}/generate` });
-});
-
-// ── SONG PIPELINE (generate song from topic) ───────────────────
-
-// Page: live terminal for song generation
-app.get('/songs/:id/generate', (req, res) => {
-  const song = getSong(req.params.id);
-  if (!song) return res.status(404).render('404', { message: 'Song not found' });
-  const job = req.query.job ? pipelineJobs.get(req.query.job) : null;
-  res.render('songs/generate', { song, jobId: req.query.job || null, job: job || null });
-});
-
-// POST: spawn the orchestrator pipeline for a song
-app.post('/api/songs/:id/generate', (req, res) => {
-  const song = getSong(req.params.id);
-  if (!song) return res.status(404).json({ error: 'Song not found' });
-
-  const jobId = `pipe_${Date.now().toString(36)}`;
-  const topic = song.topic || song.title || 'children\'s song';
-
-  pipelineJobs.set(jobId, {
-    status: 'running',
-    logs: [],
-    songId: null,       // will be parsed from output
-    originalSongId: song.id,
-    error: null,
-    startedAt: Date.now(),
-  });
-
-  const orchestratorPath = join(__dirname, '../orchestrator.js');
-  const child = spawn('node', [orchestratorPath, '--new', topic], {
-    cwd: join(__dirname, '../..'),
-    env: { ...process.env, WEB_PIPELINE: '1', FORCE_COLOR: '0' },
-  });
-
-  const job = pipelineJobs.get(jobId);
-
-  // Aggressive ANSI + chalk artifact stripper
-  const stripAnsi = (s) => s
-    .replace(/\x1B\[[0-9;]*[mGKHFABCDEFsuhl]/g, '')
-    .replace(/\x1B\][^\x07]*\x07/g, '')
-    .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
-    .trim();
-
-  const processLine = (line) => {
-    const clean = stripAnsi(line);
-    if (!clean) return;
-    job.logs.push(clean);
-    // Try multiple patterns to catch Song ID
-    const idMatch = clean.match(/SONG_[A-Z0-9_]+/);
-    if (idMatch && idMatch[0].length > 8) job.songId = idMatch[0];
-  };
-
-  let stderrBuf = '';
-  let stdoutBuf = '';
-
-  child.stdout.on('data', (data) => {
-    stdoutBuf += data.toString();
-    const lines = stdoutBuf.split('\n');
-    stdoutBuf = lines.pop();
-    lines.forEach(processLine);
-  });
-
-  child.stderr.on('data', (data) => {
-    stderrBuf += data.toString();
-    const lines = stderrBuf.split('\n');
-    stderrBuf = lines.pop();
-    lines.forEach(l => {
-      const clean = stripAnsi(l);
-      if (clean && !clean.includes('DeprecationWarning') && !clean.includes('ExperimentalWarning')) {
-        job.logs.push('⚠ ' + clean);
-      }
-    });
-  });
-
-  child.on('close', (code) => {
-    if (stdoutBuf.trim()) processLine(stdoutBuf);
-
-    if (code === 0) {
-      job.status = 'done';
-      job.logs.push('✅ Pipeline complete!');
-      // DB fallback: if we still don't have a song ID, find most recently created song
-      if (!job.songId) {
-        try {
-          const recent = getAllSongs()
-            .filter(s => s.created_at > new Date(job.startedAt).toISOString())
-            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-          if (recent) {
-            job.songId = recent.id;
-            job.logs.push(`📀 Song ID: ${recent.id}`);
-          }
-        } catch {}
-      }
-    } else {
-      job.status = 'error';
-      job.error = `Process exited with code ${code}`;
-      job.logs.push(`❌ Pipeline failed (exit code ${code})`);
-      job.logs.push('👆 Scroll up to find the error above');
-    }
-  });
-
-  child.on('error', (err) => {
-    job.status = 'error';
-    job.error = err.message;
-    job.logs.push('❌ Failed to start: ' + err.message);
-  });
-
-  res.json({ ok: true, jobId });
-});
-
-// GET SSE: stream pipeline logs
-app.get('/api/songs/pipeline/stream/:jobId', (req, res) => {
-  const { jobId } = req.params;
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
-
-  let lastIndex = 0;
-  const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-
-  const tick = () => {
-    const job = pipelineJobs.get(jobId);
-    if (!job) { send('error', { message: 'Job not found' }); res.end(); return; }
-
-    const newLogs = job.logs.slice(lastIndex);
-    for (const line of newLogs) send('log', { message: line });
-    lastIndex = job.logs.length;
-
-    if (job.status === 'done') {
-      send('complete', { songId: job.songId, originalSongId: job.originalSongId });
-      res.end();
-    } else if (job.status === 'error') {
-      send('error', { message: job.error });
-      res.end();
-    } else {
-      setTimeout(tick, 600);
-    }
-  };
-
-  req.on('close', () => {});
-  tick();
-});
-
-// ── SONGS ──────────────────────────────────────────────────────
-app.get('/songs', (req, res) => {
-  let songs = getAllSongs().map(s => {
-    const songDir = join(__dirname, '../../output/songs', s.id);
-    const fsAssets = scanSongDir(songDir);
-    const thumbs = fsAssets.thumbnails || [];
-    // Prefer youtube_landscape, then any thumbnail
-    const thumb = thumbs.find(t => t.name.includes('youtube_landscape') || t.name.includes('landscape'))
-      || thumbs.find(t => !t.name.includes('spotify_square'))
-      || thumbs[0]
-      || null;
-    const audio = (fsAssets.audioFiles || [])[0] || null;
-    return {
-      ...s,
-      progress: getChecklistProgress(s.id),
-      thumbnailUrl: thumb ? thumb.url : null,
-      hasAudio: audio !== null,
-    };
-  });
-
-  const { q, status, sort } = req.query;
-  if (q) {
-    const lq = q.toLowerCase();
-    songs = songs.filter(s =>
-      (s.title || '').toLowerCase().includes(lq) ||
-      (s.topic || '').toLowerCase().includes(lq)
-    );
-  }
-  if (status) songs = songs.filter(s => s.status === status);
-  if (sort === 'readiness') songs.sort((a, b) => b.progress.pct - a.progress.pct);
-  else if (sort === 'created') songs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  else songs.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
-
-  res.render('songs/index', { songs, q: q || '', filterStatus: status || '', sort: sort || '' });
-});
-
-app.get('/songs/:id', (req, res) => {
-  const song = getSong(req.params.id);
-  if (!song) return res.status(404).render('404', { message: 'Song not found' });
-
-  const idea = song.originating_idea_id ? getIdea(song.originating_idea_id) : null;
-  const assets = getAssetsForSong(song.id);
-  const checklist = getPublishingChecklist(song.id);
-  const progress = getChecklistProgress(song.id);
-  const links = getReleaseLinks(song.id);
-  const snapshots = getPerformanceSnapshots(song.id);
-
-  const songDir = join(__dirname, '../../output/songs', song.id);
-  const fsAssets = scanSongDir(songDir);
-
-  // Read file contents for tabs
-  const readFile = (p) => { try { return p && fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null; } catch { return null; } };
-  const lyricsContent    = readFile(fsAssets.lyrics);
-  const audioPromptContent = readFile(fsAssets.audioPrompt);
-  const metadataContent  = fsAssets.metadata ? readFile(fsAssets.metadata) : null;
-  const brandReviewContent = fsAssets.brandReview ? readFile(fsAssets.brandReview) : null;
-  const metadataParsed   = metadataContent ? (() => { try { return JSON.parse(metadataContent); } catch { return null; } })() : null;
-  const brandParsed      = brandReviewContent ? (() => { try { return JSON.parse(brandReviewContent); } catch { return null; } })() : null;
-
-  res.render('songs/detail', {
-    song, idea, assets, checklist, progress, links, snapshots, fsAssets,
-    lyricsContent, audioPromptContent, metadataParsed, brandParsed,
-  });
-});
-
-app.get('/songs/:id/edit', (req, res) => {
-  const song = getSong(req.params.id);
-  if (!song) return res.status(404).render('404', { message: 'Song not found' });
-  res.render('songs/edit', { song, error: null });
-});
-
-app.post('/songs/:id', (req, res) => {
-  const { title, status, concept, target_age_range, notes, release_date, genre_tags, mood_tags } = req.body;
-  upsertSong({
-    id: req.params.id,
-    title: title?.trim() || undefined,
-    status: status || undefined,
-    concept: concept?.trim() || undefined,
-    target_age_range: target_age_range || undefined,
-    notes: notes?.trim() || undefined,
-    release_date: release_date || undefined,
-    genre_tags: genre_tags ? genre_tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
-    mood_tags: mood_tags ? mood_tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
-  });
-  res.redirect(`/songs/${req.params.id}`);
-});
-
-// API: generate thumbnails on demand
-// In-memory job store for thumbnail jobs
-const thumbJobs = new Map(); // jobId → { status, logs, count, error }
-
-app.post('/api/songs/:id/thumbnails', async (req, res) => {
-  const song = getSong(req.params.id);
-  if (!song) return res.status(404).json({ error: 'Song not found' });
-
-  const jobId = `thumb_${song.id}_${Date.now()}`;
-  thumbJobs.set(jobId, { status: 'running', logs: [], count: 0, error: null });
-
-  // Run thumbnail generation in background via child process so we get stdout
-  const scriptPath = join(__dirname, '../scripts/generate-thumbs.js');
-  const child = spawn('node', [scriptPath, song.id], {
-    cwd: join(__dirname, '../..'),
-    env: { ...process.env, FORCE_COLOR: '0' },
-  });
-
-  const job = thumbJobs.get(jobId);
-  const stripAnsi = (s) => s
-    .replace(/\x1B\[[0-9;]*[mGKHFABCDEFsuhl]/g, '')
-    .replace(/\x1B\][^\x07]*\x07/g, '')
-    .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
-    .trim();
-
-  const handleLine = (line) => {
-    const clean = stripAnsi(line);
-    if (!clean) return;
-    job.logs.push(clean);
-    // Parse count from completion line
-    const m = clean.match(/Generated (\d+) thumbnail/);
-    if (m) job.count = parseInt(m[1], 10);
-  };
-
-  let stdoutBuf = '', stderrBuf = '';
-  child.stdout.on('data', (d) => {
-    stdoutBuf += d.toString();
-    const lines = stdoutBuf.split('\n');
-    stdoutBuf = lines.pop();
-    lines.forEach(handleLine);
-  });
-  child.stderr.on('data', (d) => {
-    stderrBuf += d.toString();
-    const lines = stderrBuf.split('\n');
-    stderrBuf = lines.pop();
-    lines.forEach(handleLine);
-  });
-  child.on('close', (code) => {
-    if (stdoutBuf) handleLine(stdoutBuf);
-    if (stderrBuf) handleLine(stderrBuf);
-    job.status = code === 0 ? 'done' : 'error';
-    if (code !== 0) job.error = `Process exited with code ${code}`;
-  });
-
-  res.json({ ok: true, jobId });
-});
-
-app.get('/api/songs/thumbnails/stream/:jobId', (req, res) => {
-  const job = thumbJobs.get(req.params.jobId);
-  if (!job) return res.status(404).json({ error: 'Job not found' });
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
-
-  let cursor = 0;
-  const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-
-  const tick = () => {
-    while (cursor < job.logs.length) {
-      send('log', { message: job.logs[cursor++] });
-    }
-    if (job.status === 'done') {
-      send('complete', { count: job.count });
-      return res.end();
-    }
-    if (job.status === 'error') {
-      send('error', { message: job.error || 'Thumbnail generation failed' });
-      return res.end();
-    }
-    setTimeout(tick, 300);
-  };
-  tick();
-  req.on('close', () => {});
-});
-
-// API: update checklist item
-app.post('/api/songs/:id/checklist/:key', (req, res) => {
-  const { status, note } = req.body;
-  const allowed = ['not_started', 'in_progress', 'done', 'blocked'];
-  if (!allowed.includes(status)) return res.status(400).json({ error: 'Invalid status' });
-  updateChecklistItem(req.params.id, req.params.key, { status, note });
-  const progress = getChecklistProgress(req.params.id);
-  res.json({ ok: true, progress });
-});
-
-// API: update song status
-app.post('/api/songs/:id/status', (req, res) => {
-  const { status } = req.body;
-  upsertSong({ id: req.params.id, status });
-  res.json({ ok: true });
-});
-
-// API: add release link
-app.delete('/api/songs/:id', (req, res) => {
-  const song = getSong(req.params.id);
-  if (!song) return res.status(404).json({ error: 'Song not found' });
-  deleteSong(req.params.id);
-  res.json({ ok: true });
-});
-
-app.post('/api/songs/:id/approve', (req, res) => {
-  const song = getSong(req.params.id);
-  if (!song) return res.status(404).json({ error: 'Song not found' });
-  upsertSong({ ...song, status: 'approved' });
-  res.json({ ok: true });
-});
-
-app.post('/api/songs/:id/links', (req, res) => {
-  const { platform, url } = req.body;
-  if (!platform || !url) return res.status(400).json({ error: 'platform and url required' });
-  upsertReleaseLink(req.params.id, platform, url);
-  res.json({ ok: true });
-});
-
-// ── BRAND EDITOR ───────────────────────────────────────────────
-const BRAND_BIBLE_PATH = join(__dirname, '../../output/brand/brand-bible.md');
-
-function readBrandBible() {
-  try {
-    const raw = fs.readFileSync(BRAND_BIBLE_PATH, 'utf8');
-    // Strip markdown code fence if present
-    let jsonStr = raw.replace(/^```json\s*/m, '').replace(/\s*```\s*$/, '').trim();
-
-    // Try full parse first
-    try { return JSON.parse(jsonStr); } catch (_) {}
-
-    // The file may be truncated (brand_bible_markdown string gets cut off).
-    // Extract just the brand_data object by finding its boundaries.
-    const startMarker = '"brand_data"';
-    const startIdx = jsonStr.indexOf(startMarker);
-    if (startIdx === -1) return null;
-
-    // Walk forward from the opening { of brand_data to find the matching closing }
-    const objStart = jsonStr.indexOf('{', startIdx + startMarker.length);
-    if (objStart === -1) return null;
-
-    let depth = 0, i = objStart, inStr = false, escape = false;
-    for (; i < jsonStr.length; i++) {
-      const c = jsonStr[i];
-      if (escape) { escape = false; continue; }
-      if (c === '\\' && inStr) { escape = true; continue; }
-      if (c === '"') { inStr = !inStr; continue; }
-      if (inStr) continue;
-      if (c === '{') depth++;
-      else if (c === '}') { depth--; if (depth === 0) break; }
-    }
-
-    const brandDataJson = jsonStr.slice(objStart, i + 1);
-    const brandData = JSON.parse(brandDataJson);
-    return { brand_data: brandData };
-  } catch { return null; }
-}
-
-function writeBrandBible(data) {
-  const jsonStr = JSON.stringify(data, null, 2);
-  fs.writeFileSync(BRAND_BIBLE_PATH, '```json\n' + jsonStr + '\n```', 'utf8');
-}
-
-app.get('/brand', (req, res) => {
-  const brand = readBrandBible();
-  res.render('brand/edit', { brand });
-});
-
-app.post('/api/brand', express.json(), (req, res) => {
-  try {
-    const existing = readBrandBible() || { brand_data: {} };
-    const bd = existing.brand_data;
-    const b = req.body;
-
-    // Character
-    if (b.character_name !== undefined) bd.character = bd.character || {};
-    if (b.character_name !== undefined) bd.character.name = b.character_name;
-    if (b.character_backstory !== undefined) bd.character.backstory = b.character_backstory;
-    if (b.personality_traits !== undefined) bd.character.personality_traits = b.personality_traits.split('\n').map(s => s.trim()).filter(Boolean);
-    if (b.catchphrases !== undefined) bd.character.catchphrases = b.catchphrases.split('\n').map(s => s.trim()).filter(Boolean);
-
-    // Voice
-    if (b.voice_tone !== undefined) bd.voice = bd.voice || {};
-    if (b.voice_tone !== undefined) bd.voice.tone = b.voice_tone;
-    if (b.voice_formula !== undefined) bd.voice.formula = b.voice_formula;
-    if (b.recurring_themes !== undefined) bd.voice.recurring_themes = b.recurring_themes.split('\n').map(s => s.trim()).filter(Boolean);
-
-    // Rules
-    if (b.rules_always !== undefined) bd.rules = bd.rules || {};
-    if (b.rules_always !== undefined) bd.rules.always = b.rules_always.split('\n').map(s => s.trim()).filter(Boolean);
-    if (b.rules_never !== undefined) bd.rules.never = b.rules_never.split('\n').map(s => s.trim()).filter(Boolean);
-    if (b.on_brand_topics !== undefined) bd.rules.on_brand_topics = b.on_brand_topics.split('\n').map(s => s.trim()).filter(Boolean);
-    if (b.off_brand_topics !== undefined) bd.rules.off_brand_topics = b.off_brand_topics.split('\n').map(s => s.trim()).filter(Boolean);
-    if (b.age_guardrails !== undefined) bd.rules.age_guardrails = b.age_guardrails;
-
-    writeBrandBible(existing);
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ── 404 ────────────────────────────────────────────────────────
-app.use((req, res) => {
-  res.status(404).render('404', { message: `Page not found: ${req.path}` });
-});
-
-// ── HELPERS ────────────────────────────────────────────────────
-const OUTPUT_DIR = join(__dirname, '../../output');
-function toWebUrl(absPath) {
-  return '/media/' + absPath.replace(OUTPUT_DIR, '').replace(/\\/g, '/').replace(/^\//, '');
-}
-
-function scanSongDir(songDir) {
-  if (!fs.existsSync(songDir)) return {};
-  const result = {};
-
-  const tryFile = (path) => fs.existsSync(path) ? path : null;
-
-  result.lyrics = tryFile(join(songDir, 'lyrics.md'));
-  result.audioPrompt = tryFile(join(songDir, 'audio-prompt.md'));
-  result.metadata = tryFile(join(songDir, 'metadata.json'));
-  result.brandReview = tryFile(join(songDir, 'brand-review.json'));
-  result.qaReport = tryFile(join(songDir, 'qa-report.json'));
-
-  // Audio
-  const audioDir = join(songDir, 'audio');
-  const audioRoot = tryFile(join(songDir, 'audio.mp3')) || tryFile(join(songDir, 'audio.wav'));
-  let audioFiles = [];
-  if (audioRoot) audioFiles.push({ path: audioRoot, url: toWebUrl(audioRoot) });
-  if (fs.existsSync(audioDir)) {
-    const found = fs.readdirSync(audioDir)
-      .filter(f => f.endsWith('.mp3') || f.endsWith('.wav'))
-      .map(f => {
-        const p = join(audioDir, f);
-        return { path: p, url: toWebUrl(p), name: f, size: fs.statSync(p).size };
-      });
-    audioFiles = audioFiles.concat(found);
-  }
-  result.audioFiles = audioFiles;
-
-  // Thumbnails
-  const thumbDir = join(songDir, 'thumbnails');
-  result.thumbnails = fs.existsSync(thumbDir)
-    ? fs.readdirSync(thumbDir)
-        .filter(f => f.endsWith('.png'))
-        .map(f => {
-          const p = join(thumbDir, f);
-          return { path: p, url: toWebUrl(p), name: f };
-        })
-    : [];
-
-  return result;
-}
-
-// ── START ───────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n🥞  Pancake Robot UI running at http://localhost:${PORT}\n`);
+  console.log(`\n☀️  Busy Little Happy UI running at http://localhost:${PORT}\n`);
 });
