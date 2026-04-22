@@ -1,0 +1,24 @@
+<svg width="420" height="120" viewBox="0 0 420 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="420" height="120" rx="24" fill="#FFF9F0"/>
+  <text x="34" y="42" font-family="Trebuchet MS, Arial, sans-serif" font-size="30" font-weight="700" fill="#18325F">Busy Little</text>
+  <text x="33" y="88" font-family="Arial Rounded MT Bold, Trebuchet MS, Arial, sans-serif" font-size="56" font-weight="900" fill="#FF6F91">H</text>
+  <text x="78" y="88" font-family="Arial Rounded MT Bold, Trebuchet MS, Arial, sans-serif" font-size="56" font-weight="900" fill="#FF9F40">A</text>
+  <text x="123" y="88" font-family="Arial Rounded MT Bold, Trebuchet MS, Arial, sans-serif" font-size="56" font-weight="900" fill="#F7C548">P</text>
+  <text x="167" y="88" font-family="Arial Rounded MT Bold, Trebuchet MS, Arial, sans-serif" font-size="56" font-weight="900" fill="#4EC7C1">P</text>
+  <text x="212" y="88" font-family="Arial Rounded MT Bold, Trebuchet MS, Arial, sans-serif" font-size="56" font-weight="900" fill="#A56CC1">Y</text>
+  <text x="35" y="108" font-family="Trebuchet MS, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="3" fill="#18325F">PRINTABLE FUN PACKS</text>
+  <circle cx="353" cy="34" r="17" fill="#FFD257"/>
+  <path d="M346 23L343 15" stroke="#FFB020" stroke-width="4" stroke-linecap="round"/>
+  <path d="M360 24L364 16" stroke="#FFB020" stroke-width="4" stroke-linecap="round"/>
+  <path d="M369 35H378" stroke="#FFB020" stroke-width="4" stroke-linecap="round"/>
+  <path d="M360 46L365 53" stroke="#FFB020" stroke-width="4" stroke-linecap="round"/>
+  <path d="M346 46L341 53" stroke="#FFB020" stroke-width="4" stroke-linecap="round"/>
+  <path d="M336 35H327" stroke="#FFB020" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="347" cy="32" r="2.7" fill="#FFFFFF"/>
+  <circle cx="359" cy="32" r="2.7" fill="#FFFFFF"/>
+  <path d="M346 39C349 43 357 43 360 39" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M289 56C289 56 298 46 307 56" stroke="#FF6F91" stroke-width="6" stroke-linecap="round"/>
+  <path d="M314 64C314 64 323 54 332 64" stroke="#FF9F40" stroke-width="6" stroke-linecap="round"/>
+  <path d="M339 70C339 70 348 60 357 70" stroke="#4EC7C1" stroke-width="6" stroke-linecap="round"/>
+  <path d="M364 65C364 65 373 55 382 65" stroke="#A56CC1" stroke-width="6" stroke-linecap="round"/>
+</svg>
