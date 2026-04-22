@@ -1,627 +1,263 @@
-/**
- * SQLite database helpers for Pancake Robot
- * Includes: runs, songs, ideas, assets, publishing_checklist,
- *           release_links, performance_snapshots, service_research, errors
- */
-
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = join(__dirname, '../../pancake-robot.db');
+const DB_PATH = join(__dirname, '../../busyhappy.db');
+let db;
 
-let _db = null;
+const j = (v, fallback = []) => { try { return v ? JSON.parse(v) : fallback; } catch { return fallback; } };
+const now = () => new Date().toISOString();
 
 export function getDb() {
-  if (_db) return _db;
-
-  _db = new Database(DB_PATH);
-  _db.pragma('journal_mode = WAL');
-  _db.pragma('foreign_keys = ON');
-
-  initSchema(_db);
-  return _db;
-}
-
-function initSchema(db) {
-  // Core tables that always existed
+  if (db) return db;
+  db = new Database(DB_PATH);
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
   db.exec(`
-    CREATE TABLE IF NOT EXISTS runs (
-      id TEXT PRIMARY KEY,
-      timestamp TEXT NOT NULL,
-      agent_name TEXT NOT NULL,
-      task_summary TEXT,
-      input_tokens INTEGER DEFAULT 0,
-      output_tokens INTEGER DEFAULT 0,
-      cache_read_tokens INTEGER DEFAULT 0,
-      runtime_seconds REAL DEFAULT 0,
-      cost_usd REAL DEFAULT 0,
-      session_id TEXT,
-      status TEXT DEFAULT 'success'
-    );
-
-    CREATE TABLE IF NOT EXISTS songs (
+    CREATE TABLE IF NOT EXISTS product_families (
       id TEXT PRIMARY KEY,
       created_at TEXT NOT NULL,
-      updated_at TEXT,
-      title TEXT,
-      slug TEXT,
-      topic TEXT,
-      status TEXT DEFAULT 'draft',
-      originating_idea_id TEXT,
-      concept TEXT,
-      target_age_range TEXT,
-      genre_tags TEXT,
-      mood_tags TEXT,
-      keywords TEXT,
-      notes TEXT,
-      release_date TEXT,
-      distributor TEXT DEFAULT 'TuneCore',
-      tunecore_submission_date TEXT,
-      publishing_status TEXT DEFAULT 'not_started',
-      published_at TEXT,
-      lyrics_path TEXT,
-      audio_prompt_path TEXT,
-      thumbnail_path TEXT,
-      metadata_path TEXT,
-      music_service TEXT,
-      distribution_status TEXT,
-      brand_score INTEGER,
-      total_cost_usd REAL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS ideas (
-      id TEXT PRIMARY KEY,
-      created_at TEXT NOT NULL,
-      updated_at TEXT,
-      status TEXT DEFAULT 'new',
+      updated_at TEXT NOT NULL,
+      slug TEXT UNIQUE,
       title TEXT NOT NULL,
-      concept TEXT,
-      hook TEXT,
-      target_age_range TEXT DEFAULT '4-10',
-      category TEXT,
-      mood TEXT,
-      educational_angle TEXT,
-      tags TEXT,
-      lyric_seed TEXT,
-      thumbnail_seed TEXT,
-      notes TEXT,
-      source_type TEXT DEFAULT 'manual',
-      source_ref TEXT,
-      promoted_song_id TEXT
+      niche TEXT,
+      use_case TEXT,
+      default_age_band TEXT,
+      theme TEXT,
+      status TEXT DEFAULT 'draft',
+      description TEXT,
+      parent_strategy TEXT,
+      derivative_potential_score INTEGER DEFAULT 0,
+      tags_json TEXT
     );
-
-    CREATE TABLE IF NOT EXISTS assets (
+    CREATE TABLE IF NOT EXISTS skus (
       id TEXT PRIMARY KEY,
-      song_id TEXT NOT NULL,
       created_at TEXT NOT NULL,
-      updated_at TEXT,
-      asset_type TEXT NOT NULL,
-      label TEXT,
-      version INTEGER DEFAULT 1,
-      file_path TEXT,
-      mime_type TEXT,
-      text_content TEXT,
-      is_current INTEGER DEFAULT 1,
+      updated_at TEXT NOT NULL,
+      product_family_id TEXT NOT NULL,
+      sku_code TEXT UNIQUE,
+      title TEXT NOT NULL,
+      subtitle TEXT,
+      age_band TEXT,
+      use_case TEXT,
+      theme TEXT,
+      format_type TEXT,
+      page_count INTEGER DEFAULT 0,
+      difficulty_level TEXT,
+      price_etsy REAL,
+      price_gumroad REAL,
+      price_kdp REAL,
+      status TEXT DEFAULT 'draft',
+      qa_status TEXT DEFAULT 'pending',
+      file_package_status TEXT DEFAULT 'unpackaged',
       notes TEXT,
-      FOREIGN KEY (song_id) REFERENCES songs(id)
+      tags_json TEXT,
+      FOREIGN KEY (product_family_id) REFERENCES product_families(id)
     );
-
-    CREATE TABLE IF NOT EXISTS publishing_checklist (
+    CREATE TABLE IF NOT EXISTS bundles (
       id TEXT PRIMARY KEY,
-      song_id TEXT NOT NULL,
-      key TEXT NOT NULL,
-      label TEXT NOT NULL,
-      status TEXT DEFAULT 'not_started',
-      note TEXT,
-      updated_at TEXT,
-      FOREIGN KEY (song_id) REFERENCES songs(id),
-      UNIQUE(song_id, key)
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      title TEXT NOT NULL,
+      bundle_type TEXT,
+      channel_availability_json TEXT,
+      price_etsy REAL,
+      price_gumroad REAL,
+      price_kdp REAL,
+      status TEXT DEFAULT 'draft',
+      notes TEXT
     );
-
-    CREATE TABLE IF NOT EXISTS release_links (
+    CREATE TABLE IF NOT EXISTS bundle_items (
+      bundle_id TEXT NOT NULL,
+      sku_id TEXT NOT NULL,
+      PRIMARY KEY (bundle_id, sku_id)
+    );
+    CREATE TABLE IF NOT EXISTS channel_listings (
       id TEXT PRIMARY KEY,
-      song_id TEXT NOT NULL,
-      platform TEXT NOT NULL,
-      url TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      owner_type TEXT NOT NULL,
+      owner_id TEXT NOT NULL,
+      channel TEXT NOT NULL,
       external_id TEXT,
-      FOREIGN KEY (song_id) REFERENCES songs(id)
+      title TEXT NOT NULL,
+      description TEXT,
+      tags_json TEXT,
+      price REAL,
+      status TEXT DEFAULT 'draft',
+      sync_status TEXT DEFAULT 'planned',
+      listing_url TEXT,
+      channel_metadata_json TEXT
     );
-
     CREATE TABLE IF NOT EXISTS performance_snapshots (
       id TEXT PRIMARY KEY,
-      song_id TEXT NOT NULL,
-      platform TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      owner_type TEXT NOT NULL,
+      owner_id TEXT NOT NULL,
+      channel TEXT NOT NULL,
       snapshot_date TEXT NOT NULL,
-      metrics_json TEXT,
-      notes TEXT,
-      FOREIGN KEY (song_id) REFERENCES songs(id)
+      impressions INTEGER DEFAULT 0,
+      clicks INTEGER DEFAULT 0,
+      favorites INTEGER DEFAULT 0,
+      conversions INTEGER DEFAULT 0,
+      orders INTEGER DEFAULT 0,
+      gross_revenue REAL DEFAULT 0,
+      net_revenue_estimate REAL DEFAULT 0,
+      refund_count INTEGER DEFAULT 0,
+      rating_avg REAL DEFAULT 0,
+      review_count INTEGER DEFAULT 0,
+      notes TEXT
     );
-
-    CREATE TABLE IF NOT EXISTS service_research (
+    CREATE TABLE IF NOT EXISTS derivative_jobs (
       id TEXT PRIMARY KEY,
-      researched_at TEXT NOT NULL,
-      service_name TEXT NOT NULL,
-      free_tier TEXT,
-      cost_per_song_usd REAL,
-      api_available INTEGER DEFAULT 0,
-      notes TEXT,
-      recommended INTEGER DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS errors (
-      id TEXT PRIMARY KEY,
-      timestamp TEXT NOT NULL,
-      agent_name TEXT,
-      error_message TEXT,
-      context TEXT
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      source_owner_type TEXT NOT NULL,
+      source_owner_id TEXT NOT NULL,
+      derivative_type TEXT NOT NULL,
+      rule_triggered_by TEXT,
+      job_status TEXT DEFAULT 'suggested',
+      output_owner_ids_json TEXT,
+      notes TEXT
     );
   `);
-
-  // Migrate existing songs table — add new columns if they don't exist yet
-  const songCols = db.prepare("PRAGMA table_info(songs)").all().map(c => c.name);
-  const newSongCols = [
-    ['updated_at', 'TEXT'],
-    ['slug', 'TEXT'],
-    ['originating_idea_id', 'TEXT'],
-    ['concept', 'TEXT'],
-    ['target_age_range', 'TEXT'],
-    ['genre_tags', 'TEXT'],
-    ['mood_tags', 'TEXT'],
-    ['keywords', 'TEXT'],
-    ['notes', 'TEXT'],
-    ['release_date', 'TEXT'],
-    ['distributor', "TEXT DEFAULT 'TuneCore'"],
-    ['tunecore_submission_date', 'TEXT'],
-    ['publishing_status', "TEXT DEFAULT 'not_started'"],
-    ['published_at', 'TEXT'],
-  ];
-  for (const [col, type] of newSongCols) {
-    if (!songCols.includes(col)) {
-      db.exec(`ALTER TABLE songs ADD COLUMN ${col} ${type}`);
-    }
-  }
+  return db;
 }
 
-// ─────────────────────────────────────────────
-// RUN LOGGING
-// ─────────────────────────────────────────────
+const mapFamily = (r) => r && ({ id: r.id, createdAt: r.created_at, updatedAt: r.updated_at, slug: r.slug, title: r.title, niche: r.niche, useCase: r.use_case, defaultAgeBand: r.default_age_band, theme: r.theme, status: r.status, description: r.description, parentStrategy: r.parent_strategy, derivativePotentialScore: r.derivative_potential_score, tags: j(r.tags_json) });
+const mapSku = (r) => r && ({ id: r.id, createdAt: r.created_at, updatedAt: r.updated_at, productFamilyId: r.product_family_id, skuCode: r.sku_code, title: r.title, subtitle: r.subtitle, ageBand: r.age_band, useCase: r.use_case, theme: r.theme, formatType: r.format_type, pageCount: r.page_count, difficultyLevel: r.difficulty_level, priceEtsy: r.price_etsy, priceGumroad: r.price_gumroad, priceKdp: r.price_kdp, status: r.status, qaStatus: r.qa_status, filePackageStatus: r.file_package_status, notes: r.notes, tags: j(r.tags_json) });
+const mapBundle = (r) => r && ({ id: r.id, createdAt: r.created_at, updatedAt: r.updated_at, title: r.title, bundleType: r.bundle_type, channelAvailability: j(r.channel_availability_json), priceEtsy: r.price_etsy, priceGumroad: r.price_gumroad, priceKdp: r.price_kdp, status: r.status, notes: r.notes });
+const mapListing = (r) => r && ({ id: r.id, createdAt: r.created_at, updatedAt: r.updated_at, ownerType: r.owner_type, ownerId: r.owner_id, channel: r.channel, externalId: r.external_id, title: r.title, description: r.description, tags: j(r.tags_json), price: r.price, status: r.status, syncStatus: r.sync_status, listingUrl: r.listing_url, channelMetadata: j(r.channel_metadata_json, {}) });
+const mapSnapshot = (r) => r && ({ id: r.id, createdAt: r.created_at, ownerType: r.owner_type, ownerId: r.owner_id, channel: r.channel, snapshotDate: r.snapshot_date, impressions: r.impressions, clicks: r.clicks, favorites: r.favorites, conversions: r.conversions, orders: r.orders, grossRevenue: r.gross_revenue, netRevenueEstimate: r.net_revenue_estimate, refundCount: r.refund_count, ratingAvg: r.rating_avg, reviewCount: r.review_count, notes: r.notes });
+const mapJob = (r) => r && ({ id: r.id, createdAt: r.created_at, updatedAt: r.updated_at, sourceOwnerType: r.source_owner_type, sourceOwnerId: r.source_owner_id, derivativeType: r.derivative_type, ruleTriggeredBy: r.rule_triggered_by, jobStatus: r.job_status, outputOwnerIds: j(r.output_owner_ids_json), notes: r.notes });
 
-export function logRun({ id, agentName, taskSummary, inputTokens, outputTokens, cacheReadTokens, runtimeSeconds, costUsd, sessionId, status = 'success' }) {
-  const db = getDb();
-  db.prepare(`
-    INSERT OR REPLACE INTO runs
-      (id, timestamp, agent_name, task_summary, input_tokens, output_tokens, cache_read_tokens, runtime_seconds, cost_usd, session_id, status)
-    VALUES
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id,
-    new Date().toISOString(),
-    agentName,
-    taskSummary ? taskSummary.substring(0, 500) : '',
-    inputTokens || 0,
-    outputTokens || 0,
-    cacheReadTokens || 0,
-    runtimeSeconds || 0,
-    costUsd || 0,
-    sessionId || null,
-    status
-  );
-}
+export const getProductFamily = (id) => mapFamily(getDb().prepare('SELECT * FROM product_families WHERE id = ?').get(id));
+export const getAllProductFamilies = () => getDb().prepare('SELECT * FROM product_families ORDER BY title').all().map(mapFamily);
+export const getSku = (id) => mapSku(getDb().prepare('SELECT * FROM skus WHERE id = ?').get(id));
+export const getAllSkus = () => getDb().prepare('SELECT * FROM skus ORDER BY title').all().map(mapSku);
+export const getSkusForFamily = (productFamilyId) => getDb().prepare('SELECT * FROM skus WHERE product_family_id = ? ORDER BY age_band, title').all(productFamilyId).map(mapSku);
+export const getBundle = (id) => {
+  const bundle = mapBundle(getDb().prepare('SELECT * FROM bundles WHERE id = ?').get(id));
+  if (!bundle) return null;
+  bundle.skuIds = getDb().prepare('SELECT sku_id FROM bundle_items WHERE bundle_id = ? ORDER BY sku_id').all(id).map((r) => r.sku_id);
+  return bundle;
+};
+export const getAllBundles = () => getDb().prepare('SELECT * FROM bundles ORDER BY title').all().map((r) => {
+  const bundle = mapBundle(r);
+  bundle.skuIds = getDb().prepare('SELECT sku_id FROM bundle_items WHERE bundle_id = ? ORDER BY sku_id').all(bundle.id).map((x) => x.sku_id);
+  return bundle;
+});
+export const getChannelListings = (ownerType = null, ownerId = null) => {
+  const rows = ownerType && ownerId
+    ? getDb().prepare('SELECT * FROM channel_listings WHERE owner_type = ? AND owner_id = ? ORDER BY channel, title').all(ownerType, ownerId)
+    : getDb().prepare('SELECT * FROM channel_listings ORDER BY channel, title').all();
+  return rows.map(mapListing);
+};
+export const getPerformanceSnapshots = (ownerType = null, ownerId = null) => {
+  const rows = ownerType && ownerId
+    ? getDb().prepare('SELECT * FROM performance_snapshots WHERE owner_type = ? AND owner_id = ? ORDER BY snapshot_date DESC').all(ownerType, ownerId)
+    : getDb().prepare('SELECT * FROM performance_snapshots ORDER BY snapshot_date DESC, owner_type, owner_id').all();
+  return rows.map(mapSnapshot);
+};
+export const getDerivativeJobs = (sourceOwnerType = null, sourceOwnerId = null) => {
+  const rows = sourceOwnerType && sourceOwnerId
+    ? getDb().prepare('SELECT * FROM derivative_jobs WHERE source_owner_type = ? AND source_owner_id = ? ORDER BY updated_at DESC').all(sourceOwnerType, sourceOwnerId)
+    : getDb().prepare('SELECT * FROM derivative_jobs ORDER BY updated_at DESC').all();
+  return rows.map(mapJob);
+};
 
-export function logError({ agentName, errorMessage, context }) {
-  const db = getDb();
-  const id = `err_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  db.prepare(`
-    INSERT INTO errors (id, timestamp, agent_name, error_message, context)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(id, new Date().toISOString(), agentName, errorMessage, JSON.stringify(context || {}));
-}
-
-// ─────────────────────────────────────────────
-// SONGS
-// ─────────────────────────────────────────────
-
-export function upsertSong(song) {
-  const db = getDb();
-  const now = new Date().toISOString();
-  const existing = db.prepare('SELECT * FROM songs WHERE id = ?').get(song.id);
-
-  if (existing) {
-    // PATCH update — only overwrite non-null/undefined values
-    const updates = { updated_at: now };
-    const patchable = [
-      'title', 'slug', 'topic', 'status', 'originating_idea_id', 'concept',
-      'target_age_range', 'genre_tags', 'mood_tags', 'keywords', 'notes',
-      'release_date', 'distributor', 'tunecore_submission_date', 'publishing_status',
-      'published_at', 'lyrics_path', 'audio_prompt_path', 'thumbnail_path',
-      'metadata_path', 'music_service', 'distribution_status', 'brand_score',
-      'total_cost_usd',
-    ];
-    for (const key of patchable) {
-      if (song[key] !== undefined && song[key] !== null) {
-        updates[key] = song[key];
-      }
-    }
-    const setClauses = Object.keys(updates).map(k => `${k} = ?`).join(', ');
-    const vals = [...Object.values(updates), song.id];
-    db.prepare(`UPDATE songs SET ${setClauses} WHERE id = ?`).run(...vals);
+function upsert(table, id, fields) {
+  const database = getDb();
+  const exists = database.prepare(`SELECT id FROM ${table} WHERE id = ?`).get(id);
+  const cols = Object.keys(fields);
+  if (exists) {
+    const set = cols.map((c) => `${c} = ?`).join(', ');
+    database.prepare(`UPDATE ${table} SET ${set} WHERE id = ?`).run(...cols.map((c) => fields[c]), id);
   } else {
-    db.prepare(`
-      INSERT INTO songs
-        (id, created_at, updated_at, title, slug, topic, status, originating_idea_id,
-         concept, target_age_range, genre_tags, mood_tags, keywords, notes,
-         release_date, distributor, tunecore_submission_date, publishing_status,
-         published_at, lyrics_path, audio_prompt_path, thumbnail_path, metadata_path,
-         music_service, distribution_status, brand_score, total_cost_usd)
-      VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      song.id,
-      song.created_at || now,
-      now,
-      song.title || null,
-      song.slug || null,
-      song.topic || null,
-      song.status || 'draft',
-      song.originating_idea_id || null,
-      song.concept || null,
-      song.target_age_range || null,
-      song.genre_tags ? JSON.stringify(song.genre_tags) : null,
-      song.mood_tags ? JSON.stringify(song.mood_tags) : null,
-      song.keywords ? JSON.stringify(song.keywords) : null,
-      song.notes || null,
-      song.release_date || null,
-      song.distributor || 'TuneCore',
-      song.tunecore_submission_date || null,
-      song.publishing_status || 'not_started',
-      song.published_at || null,
-      song.lyrics_path || null,
-      song.audio_prompt_path || null,
-      song.thumbnail_path || null,
-      song.metadata_path || null,
-      song.music_service || null,
-      song.distribution_status || null,
-      song.brand_score || null,
-      song.total_cost_usd || 0
-    );
+    database.prepare(`INSERT INTO ${table} (id, ${cols.join(', ')}) VALUES (?, ${cols.map(() => '?').join(', ')})`).run(id, ...cols.map((c) => fields[c]));
   }
 }
 
-export function getSong(id) {
-  return parseSong(getDb().prepare('SELECT * FROM songs WHERE id = ?').get(id));
-}
-
-export function getAllSongs() {
-  return getDb().prepare('SELECT * FROM songs ORDER BY created_at DESC').all().map(parseSong);
-}
-
-export function deleteSong(id) {
-  const db = getDb();
-  db.prepare('DELETE FROM publishing_checklist WHERE song_id = ?').run(id);
-  db.prepare('DELETE FROM assets WHERE song_id = ?').run(id);
-  db.prepare('DELETE FROM release_links WHERE song_id = ?').run(id);
-  db.prepare('DELETE FROM performance_snapshots WHERE song_id = ?').run(id);
-  db.prepare('DELETE FROM songs WHERE id = ?').run(id);
-}
-
-function parseSong(s) {
-  if (!s) return null;
-  return {
-    ...s,
-    genre_tags: parseJsonArray(s.genre_tags),
-    mood_tags: parseJsonArray(s.mood_tags),
-    keywords: parseJsonArray(s.keywords),
-  };
-}
-
-// ─────────────────────────────────────────────
-// IDEAS
-// ─────────────────────────────────────────────
-
-export function createIdea(idea) {
-  const db = getDb();
-  const now = new Date().toISOString();
-  const id = idea.id || `IDEA_${Date.now().toString(36).toUpperCase()}_${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-  db.prepare(`
-    INSERT INTO ideas
-      (id, created_at, updated_at, status, title, concept, hook, target_age_range,
-       category, mood, educational_angle, tags, lyric_seed, thumbnail_seed,
-       notes, source_type, source_ref, promoted_song_id)
-    VALUES
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id, now, now,
-    idea.status || 'new',
-    idea.title,
-    idea.concept || null,
-    idea.hook || null,
-    idea.target_age_range || '4-10',
-    idea.category || null,
-    idea.mood || null,
-    idea.educational_angle || null,
-    idea.tags ? JSON.stringify(idea.tags) : null,
-    idea.lyric_seed || null,
-    idea.thumbnail_seed || null,
-    idea.notes || null,
-    idea.source_type || 'manual',
-    idea.source_ref || null,
-    idea.promoted_song_id || null
-  );
+export function createDerivativeJob(job) {
+  const id = job.id || `DJ_${Date.now().toString(36).toUpperCase()}_${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  upsert('derivative_jobs', id, {
+    created_at: now(),
+    updated_at: now(),
+    source_owner_type: job.sourceOwnerType,
+    source_owner_id: job.sourceOwnerId,
+    derivative_type: job.derivativeType,
+    rule_triggered_by: job.ruleTriggeredBy || null,
+    job_status: job.jobStatus || 'suggested',
+    output_owner_ids_json: JSON.stringify(job.outputOwnerIds || []),
+    notes: job.notes || null,
+  });
   return id;
 }
 
-export function updateIdea(id, fields) {
-  const db = getDb();
-  const now = new Date().toISOString();
-  const allowed = [
-    'status', 'title', 'concept', 'hook', 'target_age_range', 'category',
-    'mood', 'educational_angle', 'tags', 'lyric_seed', 'thumbnail_seed',
-    'notes', 'source_type', 'source_ref', 'promoted_song_id',
-  ];
-  const updates = { updated_at: now };
-  for (const key of allowed) {
-    if (fields[key] !== undefined) {
-      updates[key] = key === 'tags' && Array.isArray(fields[key])
-        ? JSON.stringify(fields[key])
-        : fields[key];
-    }
-  }
-  const setClauses = Object.keys(updates).map(k => `${k} = ?`).join(', ');
-  db.prepare(`UPDATE ideas SET ${setClauses} WHERE id = ?`).run(...Object.values(updates), id);
+export const updateDerivativeJobStatus = (id, jobStatus) => getDb().prepare('UPDATE derivative_jobs SET job_status = ?, updated_at = ? WHERE id = ?').run(jobStatus, now(), id);
+
+export function seedCatalog({ families, skus, bundles, listings, snapshots, derivativeJobs }) {
+  const database = getDb();
+  const tx = database.transaction(() => {
+    ['derivative_jobs', 'performance_snapshots', 'channel_listings', 'bundle_items', 'bundles', 'skus', 'product_families'].forEach((t) => database.prepare(`DELETE FROM ${t}`).run());
+
+    families.forEach((family) => upsert('product_families', family.id, {
+      created_at: now(), updated_at: now(), slug: family.slug, title: family.title, niche: family.niche || null, use_case: family.useCase || null,
+      default_age_band: family.defaultAgeBand || null, theme: family.theme || null, status: family.status || 'draft', description: family.description || null,
+      parent_strategy: family.parentStrategy || null, derivative_potential_score: family.derivativePotentialScore || 0, tags_json: JSON.stringify(family.tags || []),
+    }));
+
+    skus.forEach((sku) => upsert('skus', sku.id, {
+      created_at: now(), updated_at: now(), product_family_id: sku.productFamilyId, sku_code: sku.skuCode, title: sku.title, subtitle: sku.subtitle || null,
+      age_band: sku.ageBand || null, use_case: sku.useCase || null, theme: sku.theme || null, format_type: sku.formatType || null, page_count: sku.pageCount || 0,
+      difficulty_level: sku.difficultyLevel || null, price_etsy: sku.priceEtsy || null, price_gumroad: sku.priceGumroad || null, price_kdp: sku.priceKdp || null,
+      status: sku.status || 'draft', qa_status: sku.qaStatus || 'pending', file_package_status: sku.filePackageStatus || 'unpackaged', notes: sku.notes || null,
+      tags_json: JSON.stringify(sku.tags || []),
+    }));
+
+    bundles.forEach((bundle) => {
+      upsert('bundles', bundle.id, {
+        created_at: now(), updated_at: now(), title: bundle.title, bundle_type: bundle.bundleType || null, channel_availability_json: JSON.stringify(bundle.channelAvailability || []),
+        price_etsy: bundle.priceEtsy || null, price_gumroad: bundle.priceGumroad || null, price_kdp: bundle.priceKdp || null, status: bundle.status || 'draft', notes: bundle.notes || null,
+      });
+      (bundle.skuIds || []).forEach((skuId) => database.prepare('INSERT INTO bundle_items (bundle_id, sku_id) VALUES (?, ?)').run(bundle.id, skuId));
+    });
+
+    listings.forEach((listing) => upsert('channel_listings', listing.id, {
+      created_at: now(), updated_at: now(), owner_type: listing.ownerType, owner_id: listing.ownerId, channel: listing.channel, external_id: listing.externalId || null,
+      title: listing.title, description: listing.description || null, tags_json: JSON.stringify(listing.tags || []), price: listing.price || null,
+      status: listing.status || 'draft', sync_status: listing.syncStatus || 'planned', listing_url: listing.listingUrl || null, channel_metadata_json: JSON.stringify(listing.channelMetadata || {}),
+    }));
+
+    snapshots.forEach((snapshot) => upsert('performance_snapshots', snapshot.id, {
+      created_at: now(), owner_type: snapshot.ownerType, owner_id: snapshot.ownerId, channel: snapshot.channel, snapshot_date: snapshot.snapshotDate,
+      impressions: snapshot.impressions || 0, clicks: snapshot.clicks || 0, favorites: snapshot.favorites || 0, conversions: snapshot.conversions || 0, orders: snapshot.orders || 0,
+      gross_revenue: snapshot.grossRevenue || 0, net_revenue_estimate: snapshot.netRevenueEstimate || 0, refund_count: snapshot.refundCount || 0,
+      rating_avg: snapshot.ratingAvg || 0, review_count: snapshot.reviewCount || 0, notes: snapshot.notes || null,
+    }));
+
+    derivativeJobs.forEach((job) => createDerivativeJob(job));
+  });
+  tx();
 }
-
-export function getIdea(id) {
-  return parseIdea(getDb().prepare('SELECT * FROM ideas WHERE id = ?').get(id));
-}
-
-export function getAllIdeas() {
-  return getDb().prepare('SELECT * FROM ideas ORDER BY created_at DESC').all().map(parseIdea);
-}
-
-function parseIdea(i) {
-  if (!i) return null;
-  return { ...i, tags: parseJsonArray(i.tags) };
-}
-
-// ─────────────────────────────────────────────
-// ASSETS
-// ─────────────────────────────────────────────
-
-export function createAsset(asset) {
-  const db = getDb();
-  const now = new Date().toISOString();
-  const id = `ASSET_${Date.now().toString(36).toUpperCase()}_${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-
-  // If is_current, mark existing assets of same type as not current
-  if (asset.is_current !== false) {
-    db.prepare(`UPDATE assets SET is_current = 0 WHERE song_id = ? AND asset_type = ?`).run(asset.song_id, asset.asset_type);
-  }
-
-  db.prepare(`
-    INSERT INTO assets
-      (id, song_id, created_at, updated_at, asset_type, label, version, file_path, mime_type, text_content, is_current, notes)
-    VALUES
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id, asset.song_id, now, now,
-    asset.asset_type, asset.label || null,
-    asset.version || 1,
-    asset.file_path || null,
-    asset.mime_type || null,
-    asset.text_content || null,
-    asset.is_current !== false ? 1 : 0,
-    asset.notes || null
-  );
-  return id;
-}
-
-export function getAssetsForSong(songId) {
-  return getDb().prepare('SELECT * FROM assets WHERE song_id = ? ORDER BY asset_type, version DESC').all(songId);
-}
-
-// ─────────────────────────────────────────────
-// PUBLISHING CHECKLIST
-// ─────────────────────────────────────────────
-
-const TUNECORE_CHECKLIST_ITEMS = [
-  { key: 'final_title', label: 'Final song title confirmed' },
-  { key: 'primary_artist', label: 'Primary artist name set' },
-  { key: 'release_type', label: 'Release type selected (Single / EP / Album)' },
-  { key: 'audio_master', label: 'Audio master ready (MP3 192kbps+)' },
-  { key: 'cover_art', label: 'Cover art ready (3000×3000 JPG/PNG)' },
-  { key: 'lyrics_finalized', label: 'Lyrics finalized and proofread' },
-  { key: 'metadata_finalized', label: 'Metadata finalized (title, genre, tags)' },
-  { key: 'genre_subgenre', label: 'Genre and subgenre assigned' },
-  { key: 'release_date', label: 'Release date selected (Friday recommended)' },
-  { key: 'youtube_assets', label: 'YouTube thumbnail and description ready' },
-  { key: 'spotify_pitch', label: 'Spotify pitch notes written' },
-  { key: 'kids_compliance', label: 'Kids / COPPA compliance review complete' },
-  { key: 'uploaded_tunecore', label: 'Uploaded to TuneCore' },
-  { key: 'tunecore_date', label: 'TuneCore submission date recorded' },
-  { key: 'store_links', label: 'Store links captured after going live' },
-  { key: 'published_confirmed', label: 'Published confirmed on all platforms' },
-];
-
-export function initPublishingChecklist(songId) {
-  const db = getDb();
-  const now = new Date().toISOString();
-  const insert = db.prepare(`
-    INSERT OR IGNORE INTO publishing_checklist (id, song_id, key, label, status, updated_at)
-    VALUES (?, ?, ?, ?, 'not_started', ?)
-  `);
-  for (const item of TUNECORE_CHECKLIST_ITEMS) {
-    const id = `CL_${songId}_${item.key}`;
-    insert.run(id, songId, item.key, item.label, now);
-  }
-}
-
-export function getPublishingChecklist(songId) {
-  const db = getDb();
-  // Auto-init if missing
-  const existing = db.prepare('SELECT COUNT(*) as c FROM publishing_checklist WHERE song_id = ?').get(songId);
-  if (!existing || existing.c === 0) {
-    initPublishingChecklist(songId);
-  }
-  return db.prepare('SELECT * FROM publishing_checklist WHERE song_id = ? ORDER BY rowid').all(songId);
-}
-
-export function updateChecklistItem(songId, key, { status, note }) {
-  const db = getDb();
-  const now = new Date().toISOString();
-  db.prepare(`
-    UPDATE publishing_checklist SET status = ?, note = ?, updated_at = ? WHERE song_id = ? AND key = ?
-  `).run(status, note || null, now, songId, key);
-}
-
-export function getChecklistProgress(songId) {
-  const items = getPublishingChecklist(songId);
-  const done = items.filter(i => i.status === 'done').length;
-  return { total: items.length, done, pct: items.length ? Math.round((done / items.length) * 100) : 0 };
-}
-
-// ─────────────────────────────────────────────
-// RELEASE LINKS
-// ─────────────────────────────────────────────
-
-export function upsertReleaseLink(songId, platform, url, externalId = null) {
-  const db = getDb();
-  const existing = db.prepare('SELECT id FROM release_links WHERE song_id = ? AND platform = ?').get(songId, platform);
-  if (existing) {
-    db.prepare('UPDATE release_links SET url = ?, external_id = ? WHERE id = ?').run(url, externalId, existing.id);
-  } else {
-    const id = `RL_${Date.now().toString(36).toUpperCase()}_${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
-    db.prepare('INSERT INTO release_links (id, song_id, platform, url, external_id) VALUES (?, ?, ?, ?, ?)').run(id, songId, platform, url, externalId);
-  }
-}
-
-export function getReleaseLinks(songId) {
-  return getDb().prepare('SELECT * FROM release_links WHERE song_id = ? ORDER BY platform').all(songId);
-}
-
-// ─────────────────────────────────────────────
-// PERFORMANCE SNAPSHOTS
-// ─────────────────────────────────────────────
-
-export function addPerformanceSnapshot({ songId, platform, metrics }) {
-  const db = getDb();
-  const id = `SNAP_${Date.now().toString(36).toUpperCase()}_${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
-  const now = new Date().toISOString().slice(0, 10);
-  db.prepare(`
-    INSERT INTO performance_snapshots (id, song_id, platform, snapshot_date, metrics_json)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(id, songId, platform, now, JSON.stringify(metrics));
-}
-
-export function getPerformanceSnapshots(songId) {
-  return getDb().prepare('SELECT * FROM performance_snapshots WHERE song_id = ? ORDER BY snapshot_date DESC').all(songId).map(s => ({
-    ...s,
-    metrics: JSON.parse(s.metrics_json || '{}'),
-  }));
-}
-
-// ─────────────────────────────────────────────
-// EXISTING HELPERS (unchanged)
-// ─────────────────────────────────────────────
-
-export function getTotalCosts() {
-  const db = getDb();
-  const totals = db.prepare(`
-    SELECT
-      SUM(cost_usd) as total_cost,
-      SUM(input_tokens) as total_input_tokens,
-      SUM(output_tokens) as total_output_tokens,
-      COUNT(*) as total_runs,
-      SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successful_runs,
-      SUM(CASE WHEN status != 'success' THEN 1 ELSE 0 END) as failed_runs
-    FROM runs
-  `).get();
-
-  const byAgent = db.prepare(`
-    SELECT
-      agent_name,
-      SUM(cost_usd) as cost,
-      COUNT(*) as runs,
-      SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successful_runs,
-      SUM(input_tokens) as input_tokens,
-      SUM(output_tokens) as output_tokens
-    FROM runs
-    GROUP BY agent_name
-    ORDER BY cost DESC
-  `).all();
-
-  const dailyCosts = db.prepare(`
-    SELECT
-      DATE(timestamp) as date,
-      SUM(cost_usd) as cost,
-      COUNT(*) as runs
-    FROM runs
-    GROUP BY DATE(timestamp)
-    ORDER BY date ASC
-  `).all();
-
-  return { totals, byAgent, dailyCosts };
-}
-
-export function getRunHistory(limit = 50) {
-  return getDb().prepare('SELECT * FROM runs ORDER BY timestamp DESC LIMIT ?').all(limit);
-}
-
-export function upsertServiceResearch(service) {
-  const db = getDb();
-  const id = `svc_${service.service_name.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`;
-  db.prepare(`
-    INSERT OR REPLACE INTO service_research
-      (id, researched_at, service_name, free_tier, cost_per_song_usd, api_available, notes, recommended)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id,
-    new Date().toISOString(),
-    service.service_name,
-    service.free_tier || null,
-    service.cost_per_song_usd || 0,
-    service.api_available ? 1 : 0,
-    service.notes || null,
-    service.recommended ? 1 : 0
-  );
-}
-
-export function getServiceResearch() {
-  return getDb().prepare('SELECT * FROM service_research ORDER BY researched_at DESC').all();
-}
-
-// ─────────────────────────────────────────────
-// DASHBOARD STATS
-// ─────────────────────────────────────────────
 
 export function getDashboardStats() {
-  const db = getDb();
-  const ideas = db.prepare(`
-    SELECT
-      COUNT(*) as total,
-      SUM(CASE WHEN status = 'shortlisted' THEN 1 ELSE 0 END) as shortlisted,
-      SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END) as new_count
-    FROM ideas
-  `).get();
-
-  const songs = db.prepare(`
-    SELECT
-      COUNT(*) as total,
-      SUM(CASE WHEN status IN ('draft','writing','lyrics_ready','audio_in_progress','audio_ready','artwork_ready','metadata_ready') THEN 1 ELSE 0 END) as in_progress,
-      SUM(CASE WHEN status IN ('ready_to_publish','metadata_ready') THEN 1 ELSE 0 END) as ready,
-      SUM(CASE WHEN status IN ('submitted_to_tunecore','published') THEN 1 ELSE 0 END) as published
-    FROM songs
-  `).get();
-
-  return { ideas, songs };
+  const database = getDb();
+  const families = database.prepare('SELECT COUNT(*) c FROM product_families').get().c;
+  const skus = database.prepare('SELECT COUNT(*) c FROM skus').get().c;
+  const bundles = database.prepare('SELECT COUNT(*) c FROM bundles').get().c;
+  const liveListings = database.prepare("SELECT COUNT(*) c FROM channel_listings WHERE status = 'live'").get().c;
+  const estimatedNetRevenue = +(database.prepare('SELECT SUM(net_revenue_estimate) total FROM performance_snapshots').get().total || 0).toFixed(2);
+  return { families, skus, bundles, liveListings, estimatedNetRevenue };
 }
 
-// ─────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────
+export const getChannelSummary = () => getDb().prepare(`
+  SELECT channel, COUNT(*) listing_count, SUM(CASE WHEN status = 'live' THEN 1 ELSE 0 END) live_count, ROUND(SUM(price), 2) total_list_price
+  FROM channel_listings GROUP BY channel ORDER BY channel
+`).all();
 
-function parseJsonArray(val) {
-  if (!val) return [];
-  try { return JSON.parse(val); } catch { return []; }
-}
+export const getTopPerformers = (limit = 8) => getDb().prepare(`
+  SELECT owner_type, owner_id, channel, MAX(snapshot_date) latest_snapshot, SUM(orders) total_orders, ROUND(SUM(net_revenue_estimate), 2) total_net_revenue
+  FROM performance_snapshots GROUP BY owner_type, owner_id, channel ORDER BY total_orders DESC, total_net_revenue DESC LIMIT ?
+`).all(limit);
