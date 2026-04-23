@@ -38,7 +38,7 @@ import {
   buildSeedDerivativeJobs,
 } from './shared/seed-data.js';
 import { buildDerivativeOpportunities } from './shared/derivatives.js';
-import { buildAllProductPackages } from './shared/product-builder.js';
+import { buildAllMaterialPackages } from './shared/material-product-builder.js';
 
 function printBanner() {
   console.log(chalk.bgYellow.black('\n ════════════════════════════════════════════ '));
@@ -50,7 +50,7 @@ function printUsage() {
   console.log(chalk.bold('Usage:'));
   console.log('  node src/orchestrator.js --setup            Initialize and seed Busy Little Happy');
   console.log('  node src/orchestrator.js --seed             Reset and reseed demo catalog');
-  console.log('  node src/orchestrator.js --build-products   Build real per-SKU artifacts under output/product-builds');
+  console.log('  node src/orchestrator.js --build-products   Build actual per-SKU materials under output/materials');
   console.log('  node src/orchestrator.js --list-families    List product families');
   console.log('  node src/orchestrator.js --list-skus        List SKUs');
   console.log('  node src/orchestrator.js --report           Print dashboard and channel summary');
@@ -63,18 +63,18 @@ export function seedBusyLittleHappyCatalog() {
   const skus = getSeedSkus();
   const bundles = getSeedBundles();
   const listings = buildSeedListings(families, skus, bundles, { buildSkuListing, buildBundleListing });
-  const snapshots = buildSeedPerformanceSnapshots(skus, bundles);
+  const snapshots = buildSeedPerformanceSnapshots();
   const derivativeJobs = buildSeedDerivativeJobs();
   seedCatalog({ families, skus, bundles, listings, snapshots, derivativeJobs });
   return { families, skus, bundles, listings, snapshots, derivativeJobs };
 }
 
-export function buildBusyLittleHappyProducts() {
+export async function buildBusyLittleHappyProducts() {
   const families = getAllProductFamilies();
   const skus = getAllSkus();
-  const built = buildAllProductPackages(skus, families);
+  const built = await buildAllMaterialPackages(skus, families);
   skus.forEach((sku) => {
-    upsertSku({ ...sku, status: 'built', filePackageStatus: 'draft_artifacts_generated', qaStatus: sku.qaStatus || 'not_started' });
+    upsertSku({ ...sku, status: 'built', filePackageStatus: 'material_artifacts_generated', qaStatus: sku.qaStatus === 'not_started' ? 'draft_generated' : sku.qaStatus });
   });
   return built;
 }
@@ -93,10 +93,10 @@ function listFamilies() {
 function listSkus() {
   const skus = getAllSkus();
   console.log(chalk.bold('\nSKUs\n'));
-  console.log(`${'SKU'.padEnd(26)} ${'Age'.padEnd(8)} ${'Theme'.padEnd(12)} ${'Format'.padEnd(18)} ${'Build'.padEnd(24)} ${'QA'.padEnd(12)}`);
-  console.log('─'.repeat(112));
+  console.log(`${'SKU'.padEnd(26)} ${'Age'.padEnd(8)} ${'Theme'.padEnd(12)} ${'Format'.padEnd(18)} ${'Build'.padEnd(28)} ${'QA'.padEnd(16)}`);
+  console.log('─'.repeat(120));
   for (const sku of skus) {
-    console.log(`${sku.title.slice(0, 25).padEnd(26)} ${(sku.ageBand || '—').padEnd(8)} ${(sku.theme || '—').padEnd(12)} ${(sku.formatType || '—').padEnd(18)} ${(sku.filePackageStatus || '—').padEnd(24)} ${(sku.qaStatus || '—').padEnd(12)}`);
+    console.log(`${sku.title.slice(0, 25).padEnd(26)} ${(sku.ageBand || '—').padEnd(8)} ${(sku.theme || '—').padEnd(12)} ${(sku.formatType || '—').padEnd(18)} ${(sku.filePackageStatus || '—').padEnd(28)} ${(sku.qaStatus || '—').padEnd(16)}`);
   }
   console.log('');
 }
@@ -180,10 +180,10 @@ async function main() {
       break;
     }
     case '--build-products': {
-      const built = buildBusyLittleHappyProducts();
-      console.log(chalk.green(`✓ Built ${built.length} product artifact packages`));
-      built.slice(0, 5).forEach((item) => console.log(`  - ${item.manifest?.skuId || item.skuId}: ${item.dir || item.directory}`));
-      console.log('\nArtifacts written to output/product-builds\n');
+      const built = await buildBusyLittleHappyProducts();
+      console.log(chalk.green(`✓ Built ${built.length} material packages`));
+      built.slice(0, 5).forEach((item) => console.log(`  - ${item.manifest?.skuId || 'sku'}: ${item.dir}`));
+      console.log('\nArtifacts written to output/materials\n');
       break;
     }
     case '--list-families': listFamilies(); break;
