@@ -13,61 +13,61 @@ const FAMILY_DEFS = [
 
 const SKU_VARIANTS = {
   PF_AIRPLANE: [
-    { id: 'SKU_AIRPLANE_35_ANIMALS', ageBand: '3-5', theme: 'animals', formatType: 'mini pack', pageCount: 16, difficultyLevel: 'easy', subtitle: 'Gentle flight-time printables', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 7.99 },
-    { id: 'SKU_AIRPLANE_46_DINOS', ageBand: '4-6', theme: 'dinosaurs', formatType: 'standard pack', pageCount: 24, difficultyLevel: 'medium', subtitle: 'Airplane boredom buster', priceEtsy: 6.49, priceGumroad: 6.99, priceKdp: 8.99 },
-    { id: 'SKU_AIRPLANE_68_TRAVEL', ageBand: '6-8', theme: 'travel', formatType: 'standard pack', pageCount: 30, difficultyLevel: 'medium', subtitle: 'Flight games, puzzles, and prompts', priceEtsy: 7.49, priceGumroad: 7.99, priceKdp: 9.99 }
+    { id: 'SKU_AIRPLANE_35_ANIMALS', ageBand: '3-5', theme: 'animals', formatType: 'mini pack', pageCount: 16, difficultyLevel: 'easy', subtitle: 'Gentle flight-time printables', priceEtsy: 2.49, priceGumroad: 2.99, priceKdp: 6.99 },
+    { id: 'SKU_AIRPLANE_46_DINOS', ageBand: '4-6', theme: 'dinosaurs', formatType: 'standard pack', pageCount: 24, difficultyLevel: 'medium', subtitle: 'Airplane boredom buster', priceEtsy: 3.99, priceGumroad: 4.49, priceKdp: 7.99 },
+    { id: 'SKU_AIRPLANE_68_TRAVEL', ageBand: '6-8', theme: 'travel', formatType: 'standard pack', pageCount: 30, difficultyLevel: 'medium', subtitle: 'Flight games, puzzles, and prompts', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 8.49 }
   ],
   PF_ROADTRIP: [
-    { id: 'SKU_ROADTRIP_35_TRUCKS', ageBand: '3-5', theme: 'trucks', formatType: 'mini pack', pageCount: 18, difficultyLevel: 'easy', subtitle: 'Big-rig and road sign fun', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 7.99 },
-    { id: 'SKU_ROADTRIP_46_DINOS', ageBand: '4-6', theme: 'dinosaurs', formatType: 'standard pack', pageCount: 28, difficultyLevel: 'medium', subtitle: 'Road trip games and printable prompts', priceEtsy: 6.99, priceGumroad: 7.49, priceKdp: 9.49 },
-    { id: 'SKU_ROADTRIP_68_SPACE', ageBand: '6-8', theme: 'space', formatType: 'standard pack', pageCount: 32, difficultyLevel: 'medium', subtitle: 'Long-drive challenge pack', priceEtsy: 7.99, priceGumroad: 8.49, priceKdp: 10.49 }
+    { id: 'SKU_ROADTRIP_35_TRUCKS', ageBand: '3-5', theme: 'trucks', formatType: 'mini pack', pageCount: 18, difficultyLevel: 'easy', subtitle: 'Big-rig and road sign fun', priceEtsy: 2.49, priceGumroad: 2.99, priceKdp: 6.99 },
+    { id: 'SKU_ROADTRIP_46_DINOS', ageBand: '4-6', theme: 'dinosaurs', formatType: 'standard pack', pageCount: 28, difficultyLevel: 'medium', subtitle: 'Road trip games and printable prompts', priceEtsy: 3.99, priceGumroad: 4.49, priceKdp: 7.99 },
+    { id: 'SKU_ROADTRIP_68_SPACE', ageBand: '6-8', theme: 'space', formatType: 'standard pack', pageCount: 32, difficultyLevel: 'medium', subtitle: 'Long-drive challenge pack', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 8.49 }
   ],
   PF_RESTAURANT: [
-    { id: 'SKU_RESTAURANT_35_ANIMALS', ageBand: '3-5', theme: 'animals', formatType: 'placemat pack', pageCount: 14, difficultyLevel: 'easy', subtitle: 'Table-friendly coloring and spotting pages', priceEtsy: 3.99, priceGumroad: 4.49, priceKdp: 6.99 },
-    { id: 'SKU_RESTAURANT_46_OCEAN', ageBand: '4-6', theme: 'ocean', formatType: 'placemat pack', pageCount: 18, difficultyLevel: 'easy', subtitle: 'Quiet pages for restaurant waits', priceEtsy: 4.99, priceGumroad: 5.49, priceKdp: 7.49 },
-    { id: 'SKU_RESTAURANT_68_NATURE', ageBand: '6-8', theme: 'nature', formatType: 'placemat pack', pageCount: 20, difficultyLevel: 'medium', subtitle: 'Puzzle placemats for older kids', priceEtsy: 5.49, priceGumroad: 5.99, priceKdp: 7.99 }
+    { id: 'SKU_RESTAURANT_35_ANIMALS', ageBand: '3-5', theme: 'animals', formatType: 'placemat pack', pageCount: 14, difficultyLevel: 'easy', subtitle: 'Table-friendly coloring and spotting pages', priceEtsy: 1.99, priceGumroad: 2.49, priceKdp: 5.99 },
+    { id: 'SKU_RESTAURANT_46_OCEAN', ageBand: '4-6', theme: 'ocean', formatType: 'placemat pack', pageCount: 18, difficultyLevel: 'easy', subtitle: 'Quiet pages for restaurant waits', priceEtsy: 1.99, priceGumroad: 2.49, priceKdp: 5.99 },
+    { id: 'SKU_RESTAURANT_68_NATURE', ageBand: '6-8', theme: 'nature', formatType: 'placemat pack', pageCount: 20, difficultyLevel: 'medium', subtitle: 'Puzzle placemats for older kids', priceEtsy: 2.49, priceGumroad: 2.99, priceKdp: 6.49 }
   ],
   PF_WAITING: [
-    { id: 'SKU_WAITING_35_ANIMALS', ageBand: '3-5', theme: 'animals', formatType: 'mini pack', pageCount: 16, difficultyLevel: 'easy', subtitle: 'Quiet pages for appointments', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 7.99 },
-    { id: 'SKU_WAITING_46_SPACE', ageBand: '4-6', theme: 'space', formatType: 'standard pack', pageCount: 22, difficultyLevel: 'easy', subtitle: 'Waiting room calm-down kit', priceEtsy: 5.99, priceGumroad: 6.49, priceKdp: 8.49 },
-    { id: 'SKU_WAITING_68_TRAVEL', ageBand: '6-8', theme: 'travel', formatType: 'standard pack', pageCount: 24, difficultyLevel: 'medium', subtitle: 'Quiet challenge sheets and prompts', priceEtsy: 6.49, priceGumroad: 6.99, priceKdp: 8.99 }
+    { id: 'SKU_WAITING_35_ANIMALS', ageBand: '3-5', theme: 'animals', formatType: 'mini pack', pageCount: 16, difficultyLevel: 'easy', subtitle: 'Quiet pages for appointments', priceEtsy: 2.49, priceGumroad: 2.99, priceKdp: 6.99 },
+    { id: 'SKU_WAITING_46_SPACE', ageBand: '4-6', theme: 'space', formatType: 'standard pack', pageCount: 22, difficultyLevel: 'easy', subtitle: 'Waiting room calm-down kit', priceEtsy: 3.99, priceGumroad: 4.49, priceKdp: 7.99 },
+    { id: 'SKU_WAITING_68_TRAVEL', ageBand: '6-8', theme: 'travel', formatType: 'standard pack', pageCount: 24, difficultyLevel: 'medium', subtitle: 'Quiet challenge sheets and prompts', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 8.49 }
   ],
   PF_HOTEL: [
-    { id: 'SKU_HOTEL_35_ANIMALS', ageBand: '3-5', theme: 'animals', formatType: 'mini pack', pageCount: 18, difficultyLevel: 'easy', subtitle: 'Hotel room calm-time printables', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 7.99 },
-    { id: 'SKU_HOTEL_46_TRAVEL', ageBand: '4-6', theme: 'travel', formatType: 'standard pack', pageCount: 24, difficultyLevel: 'medium', subtitle: 'Quiet-time pack for hotel downtime', priceEtsy: 6.49, priceGumroad: 6.99, priceKdp: 8.99 },
-    { id: 'SKU_HOTEL_68_SPACE', ageBand: '6-8', theme: 'space', formatType: 'standard pack', pageCount: 28, difficultyLevel: 'medium', subtitle: 'Rainy day hotel challenge pack', priceEtsy: 7.49, priceGumroad: 7.99, priceKdp: 9.99 }
+    { id: 'SKU_HOTEL_35_ANIMALS', ageBand: '3-5', theme: 'animals', formatType: 'mini pack', pageCount: 18, difficultyLevel: 'easy', subtitle: 'Hotel room calm-time printables', priceEtsy: 2.49, priceGumroad: 2.99, priceKdp: 6.99 },
+    { id: 'SKU_HOTEL_46_TRAVEL', ageBand: '4-6', theme: 'travel', formatType: 'standard pack', pageCount: 24, difficultyLevel: 'medium', subtitle: 'Quiet-time pack for hotel downtime', priceEtsy: 3.99, priceGumroad: 4.49, priceKdp: 7.99 },
+    { id: 'SKU_HOTEL_68_SPACE', ageBand: '6-8', theme: 'space', formatType: 'standard pack', pageCount: 28, difficultyLevel: 'medium', subtitle: 'Rainy day hotel challenge pack', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 8.49 }
   ],
   PF_CAMPING: [
-    { id: 'SKU_CAMPING_35_NATURE', ageBand: '3-5', theme: 'nature', formatType: 'mini pack', pageCount: 16, difficultyLevel: 'easy', subtitle: 'Cabin and campsite coloring fun', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 7.99 },
-    { id: 'SKU_CAMPING_46_ANIMALS', ageBand: '4-6', theme: 'animals', formatType: 'standard pack', pageCount: 22, difficultyLevel: 'easy', subtitle: 'Camping bingo and scavenger pages', priceEtsy: 5.99, priceGumroad: 6.49, priceKdp: 8.49 },
-    { id: 'SKU_CAMPING_68_ADVENTURE', ageBand: '6-8', theme: 'adventure', formatType: 'standard pack', pageCount: 26, difficultyLevel: 'medium', subtitle: 'Outdoor explorer challenge pack', priceEtsy: 6.99, priceGumroad: 7.49, priceKdp: 9.49 }
+    { id: 'SKU_CAMPING_35_NATURE', ageBand: '3-5', theme: 'nature', formatType: 'mini pack', pageCount: 16, difficultyLevel: 'easy', subtitle: 'Cabin and campsite coloring fun', priceEtsy: 2.49, priceGumroad: 2.99, priceKdp: 6.99 },
+    { id: 'SKU_CAMPING_46_ANIMALS', ageBand: '4-6', theme: 'animals', formatType: 'standard pack', pageCount: 22, difficultyLevel: 'easy', subtitle: 'Camping bingo and scavenger pages', priceEtsy: 3.99, priceGumroad: 4.49, priceKdp: 7.99 },
+    { id: 'SKU_CAMPING_68_ADVENTURE', ageBand: '6-8', theme: 'adventure', formatType: 'standard pack', pageCount: 26, difficultyLevel: 'medium', subtitle: 'Outdoor explorer challenge pack', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 8.49 }
   ],
   PF_BEACH: [
-    { id: 'SKU_BEACH_35_OCEAN', ageBand: '3-5', theme: 'ocean', formatType: 'mini pack', pageCount: 16, difficultyLevel: 'easy', subtitle: 'Beach and ocean coloring pages', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 7.99 },
-    { id: 'SKU_BEACH_46_ANIMALS', ageBand: '4-6', theme: 'animals', formatType: 'standard pack', pageCount: 22, difficultyLevel: 'easy', subtitle: 'Beach day printable fun', priceEtsy: 5.99, priceGumroad: 6.49, priceKdp: 8.49 },
-    { id: 'SKU_BEACH_68_TRAVEL', ageBand: '6-8', theme: 'travel', formatType: 'standard pack', pageCount: 26, difficultyLevel: 'medium', subtitle: 'Vacation challenge pages for beach trips', priceEtsy: 6.99, priceGumroad: 7.49, priceKdp: 9.49 }
+    { id: 'SKU_BEACH_35_OCEAN', ageBand: '3-5', theme: 'ocean', formatType: 'mini pack', pageCount: 16, difficultyLevel: 'easy', subtitle: 'Beach and ocean coloring pages', priceEtsy: 2.49, priceGumroad: 2.99, priceKdp: 6.99 },
+    { id: 'SKU_BEACH_46_ANIMALS', ageBand: '4-6', theme: 'animals', formatType: 'standard pack', pageCount: 22, difficultyLevel: 'easy', subtitle: 'Beach day printable fun', priceEtsy: 3.99, priceGumroad: 4.49, priceKdp: 7.99 },
+    { id: 'SKU_BEACH_68_TRAVEL', ageBand: '6-8', theme: 'travel', formatType: 'standard pack', pageCount: 26, difficultyLevel: 'medium', subtitle: 'Vacation challenge pages for beach trips', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 8.49 }
   ],
   PF_JOURNAL: [
-    { id: 'SKU_JOURNAL_35_DRAW', ageBand: '3-5', theme: 'travel', formatType: 'mini journal', pageCount: 14, difficultyLevel: 'easy', subtitle: 'Draw-my-trip printable journal', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 7.99 },
-    { id: 'SKU_JOURNAL_46_MEMORY', ageBand: '4-6', theme: 'travel', formatType: 'standard journal', pageCount: 22, difficultyLevel: 'easy', subtitle: 'Trip memories and drawing prompts', priceEtsy: 5.99, priceGumroad: 6.49, priceKdp: 8.49 },
-    { id: 'SKU_JOURNAL_68_EXPLORER', ageBand: '6-8', theme: 'travel', formatType: 'standard journal', pageCount: 30, difficultyLevel: 'medium', subtitle: 'Explorer-style printable travel journal', priceEtsy: 7.49, priceGumroad: 7.99, priceKdp: 9.99 }
+    { id: 'SKU_JOURNAL_35_DRAW', ageBand: '3-5', theme: 'travel', formatType: 'mini journal', pageCount: 14, difficultyLevel: 'easy', subtitle: 'Draw-my-trip printable journal', priceEtsy: 2.49, priceGumroad: 2.99, priceKdp: 6.99 },
+    { id: 'SKU_JOURNAL_46_MEMORY', ageBand: '4-6', theme: 'travel', formatType: 'standard journal', pageCount: 22, difficultyLevel: 'easy', subtitle: 'Trip memories and drawing prompts', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 8.49 },
+    { id: 'SKU_JOURNAL_68_EXPLORER', ageBand: '6-8', theme: 'travel', formatType: 'standard journal', pageCount: 30, difficultyLevel: 'medium', subtitle: 'Explorer-style printable travel journal', priceEtsy: 4.99, priceGumroad: 5.49, priceKdp: 8.99 }
   ],
   PF_AIRPORT: [
-    { id: 'SKU_AIRPORT_35_BINGO', ageBand: '3-5', theme: 'travel', formatType: 'mini pack', pageCount: 12, difficultyLevel: 'easy', subtitle: 'Simple airport spotting game', priceEtsy: 3.49, priceGumroad: 3.99, priceKdp: 6.49 },
-    { id: 'SKU_AIRPORT_46_TRAVEL', ageBand: '4-6', theme: 'travel', formatType: 'bingo pack', pageCount: 16, difficultyLevel: 'easy', subtitle: 'Airport bingo and boarding-time fun', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 7.49 },
-    { id: 'SKU_AIRPORT_68_CHALLENGE', ageBand: '6-8', theme: 'adventure', formatType: 'challenge pack', pageCount: 20, difficultyLevel: 'medium', subtitle: 'Airport wait challenge sheets', priceEtsy: 5.49, priceGumroad: 5.99, priceKdp: 7.99 }
+    { id: 'SKU_AIRPORT_35_BINGO', ageBand: '3-5', theme: 'travel', formatType: 'mini pack', pageCount: 12, difficultyLevel: 'easy', subtitle: 'Simple airport spotting game', priceEtsy: 1.99, priceGumroad: 2.49, priceKdp: 5.99 },
+    { id: 'SKU_AIRPORT_46_TRAVEL', ageBand: '4-6', theme: 'travel', formatType: 'bingo pack', pageCount: 16, difficultyLevel: 'easy', subtitle: 'Airport bingo and boarding-time fun', priceEtsy: 1.99, priceGumroad: 2.49, priceKdp: 5.99 },
+    { id: 'SKU_AIRPORT_68_CHALLENGE', ageBand: '6-8', theme: 'adventure', formatType: 'challenge pack', pageCount: 20, difficultyLevel: 'medium', subtitle: 'Airport wait challenge sheets', priceEtsy: 2.49, priceGumroad: 2.99, priceKdp: 6.49 }
   ],
   PF_SCAVENGER: [
-    { id: 'SKU_SCAVENGER_35_COLORS', ageBand: '3-5', theme: 'nature', formatType: 'mini hunt', pageCount: 14, difficultyLevel: 'easy', subtitle: 'Color-and-find road trip hunt', priceEtsy: 4.49, priceGumroad: 4.99, priceKdp: 7.99 },
-    { id: 'SKU_SCAVENGER_46_ROADSIGNS', ageBand: '4-6', theme: 'vehicles', formatType: 'standard hunt', pageCount: 18, difficultyLevel: 'easy', subtitle: 'Road sign and vehicle scavenger set', priceEtsy: 5.49, priceGumroad: 5.99, priceKdp: 7.99 },
-    { id: 'SKU_SCAVENGER_68_EXPLORER', ageBand: '6-8', theme: 'adventure', formatType: 'challenge hunt', pageCount: 24, difficultyLevel: 'medium', subtitle: 'Long-drive explorer hunt pack', priceEtsy: 6.99, priceGumroad: 7.49, priceKdp: 9.49 }
+    { id: 'SKU_SCAVENGER_35_COLORS', ageBand: '3-5', theme: 'nature', formatType: 'mini hunt', pageCount: 14, difficultyLevel: 'easy', subtitle: 'Color-and-find road trip hunt', priceEtsy: 1.99, priceGumroad: 2.49, priceKdp: 5.99 },
+    { id: 'SKU_SCAVENGER_46_ROADSIGNS', ageBand: '4-6', theme: 'vehicles', formatType: 'standard hunt', pageCount: 18, difficultyLevel: 'easy', subtitle: 'Road sign and vehicle scavenger set', priceEtsy: 1.99, priceGumroad: 2.49, priceKdp: 5.99 },
+    { id: 'SKU_SCAVENGER_68_EXPLORER', ageBand: '6-8', theme: 'adventure', formatType: 'challenge hunt', pageCount: 24, difficultyLevel: 'medium', subtitle: 'Long-drive explorer hunt pack', priceEtsy: 2.49, priceGumroad: 2.99, priceKdp: 6.49 }
   ]
 };
 
 const BUNDLES = [
-  { id: 'BUNDLE_TRAVEL_STARTER', title: 'Family Travel Starter Bundle', bundleType: '3-pack', channelAvailability: ['etsy', 'gumroad'], priceEtsy: 14.99, priceGumroad: 15.99, priceKdp: null, status: 'planning', notes: 'Best-entry bundle for parents planning a trip this week.', skuIds: ['SKU_AIRPLANE_46_DINOS', 'SKU_ROADTRIP_46_DINOS', 'SKU_AIRPORT_46_TRAVEL'] },
-  { id: 'BUNDLE_WAIT_TIME', title: 'Busy Anywhere Bundle', bundleType: 'mega bundle', channelAvailability: ['etsy', 'gumroad'], priceEtsy: 18.99, priceGumroad: 19.99, priceKdp: null, status: 'planning', notes: 'General-purpose boredom-buster bundle for restaurants, waiting rooms, and hotel downtime.', skuIds: ['SKU_RESTAURANT_46_OCEAN', 'SKU_WAITING_46_SPACE', 'SKU_HOTEL_46_TRAVEL'] },
-  { id: 'BUNDLE_SUMMER', title: 'Summer Adventure Bundle', bundleType: '3-pack', channelAvailability: ['etsy', 'gumroad'], priceEtsy: 16.99, priceGumroad: 17.99, priceKdp: null, status: 'planning', notes: 'Seasonal bundle for cottages, campsites, and beach travel.', skuIds: ['SKU_BEACH_46_ANIMALS', 'SKU_CAMPING_46_ANIMALS', 'SKU_JOURNAL_46_MEMORY'] }
+  { id: 'BUNDLE_TRAVEL_STARTER', title: 'Family Travel Starter Bundle', bundleType: '3-pack', channelAvailability: ['etsy', 'gumroad'], priceEtsy: 7.99, priceGumroad: 8.49, priceKdp: null, status: 'planning', notes: 'Best-entry bundle for parents planning a trip this week.', skuIds: ['SKU_AIRPLANE_46_DINOS', 'SKU_ROADTRIP_46_DINOS', 'SKU_AIRPORT_46_TRAVEL'] },
+  { id: 'BUNDLE_WAIT_TIME', title: 'Busy Anywhere Bundle', bundleType: 'mega bundle', channelAvailability: ['etsy', 'gumroad'], priceEtsy: 8.99, priceGumroad: 9.49, priceKdp: null, status: 'planning', notes: 'General-purpose boredom-buster bundle for restaurants, waiting rooms, and hotel downtime.', skuIds: ['SKU_RESTAURANT_46_OCEAN', 'SKU_WAITING_46_SPACE', 'SKU_HOTEL_46_TRAVEL'] },
+  { id: 'BUNDLE_SUMMER', title: 'Summer Adventure Bundle', bundleType: '3-pack', channelAvailability: ['etsy', 'gumroad'], priceEtsy: 8.99, priceGumroad: 9.49, priceKdp: null, status: 'planning', notes: 'Seasonal bundle for cottages, campsites, and beach travel.', skuIds: ['SKU_BEACH_46_ANIMALS', 'SKU_CAMPING_46_ANIMALS', 'SKU_JOURNAL_46_MEMORY'] }
 ];
 
 export function getSeedFamilies() {
@@ -98,7 +98,7 @@ export function getSeedSkus() {
         status: 'planned',
         qaStatus: 'not_started',
         filePackageStatus: 'not_built',
-        notes: `${family.title} for ages ${variant.ageBand}. Theme: ${variant.theme}.`,
+        notes: `${family.title} for ages ${variant.ageBand}. Theme: ${variant.theme}. Planned to price about 25% below credible mid-market competitors.`,
         tags: [family.useCase, variant.theme, `ages-${variant.ageBand.replace('-', '')}`, 'screen-free', 'printable']
       });
     }
