@@ -1,14 +1,14 @@
 const FAMILY_DEFS = [
-  { id: 'PF_AIRPLANE', slug: 'airplane-activity-pack', title: 'Airplane Activity Pack', niche: 'kids travel printables', useCase: 'airplane', defaultAgeBand: '4-6', theme: 'travel', status: 'launch', description: 'Screen-free printable activities for flights, airport waiting, tray table time, and in-seat boredom.', parentStrategy: 'Travel + wait-time starter shelf', derivativePotentialScore: 92 },
-  { id: 'PF_ROADTRIP', slug: 'road-trip-activity-pack', title: 'Road Trip Activity Pack', niche: 'kids travel printables', useCase: 'road trip', defaultAgeBand: '4-6', theme: 'adventure', status: 'launch', description: 'Printable activities for car rides, snack stops, and backseat boredom.', parentStrategy: 'Travel + wait-time starter shelf', derivativePotentialScore: 95 },
-  { id: 'PF_RESTAURANT', slug: 'restaurant-placemat-pack', title: 'Restaurant Placemat Pack', niche: 'kids wait-time printables', useCase: 'restaurant', defaultAgeBand: '3-5', theme: 'animals', status: 'launch', description: 'Placemat-style printables that buy 20 to 40 minutes of calm restaurant time.', parentStrategy: 'Everyday wait-time shelf', derivativePotentialScore: 88 },
-  { id: 'PF_WAITING', slug: 'waiting-room-pack', title: 'Waiting Room Pack', niche: 'kids wait-time printables', useCase: 'waiting room', defaultAgeBand: '4-6', theme: 'calm', status: 'launch', description: 'Quiet, low-mess printables for appointments, errands, and delays.', parentStrategy: 'Everyday wait-time shelf', derivativePotentialScore: 84 },
-  { id: 'PF_HOTEL', slug: 'hotel-quiet-time-pack', title: 'Hotel Quiet-Time Pack', niche: 'kids travel printables', useCase: 'hotel', defaultAgeBand: '4-6', theme: 'travel', status: 'launch', description: 'Printables for hotel downtime, early arrivals, rainy-day rest, and pre-dinner calm.', parentStrategy: 'Travel + downtime shelf', derivativePotentialScore: 81 },
-  { id: 'PF_CAMPING', slug: 'camping-activity-pack', title: 'Camping Activity Pack', niche: 'kids outdoor printables', useCase: 'camping', defaultAgeBand: '4-6', theme: 'nature', status: 'launch', description: 'Nature-themed printables for campsite downtime, cabins, and rainy-day outdoor trips.', parentStrategy: 'Seasonal and destination shelf', derivativePotentialScore: 78 },
-  { id: 'PF_BEACH', slug: 'beach-day-pack', title: 'Beach Day Pack', niche: 'kids outdoor printables', useCase: 'beach', defaultAgeBand: '4-6', theme: 'ocean', status: 'launch', description: 'Beach-themed printables for travel days, condos, cottages, and off-sand recovery time.', parentStrategy: 'Seasonal and destination shelf', derivativePotentialScore: 77 },
-  { id: 'PF_JOURNAL', slug: 'travel-journal-for-kids', title: 'Travel Journal for Kids', niche: 'kids travel journals', useCase: 'travel journal', defaultAgeBand: '6-8', theme: 'travel', status: 'launch', description: 'A guided printable travel journal for memories, checklists, drawing prompts, and trip reflections.', parentStrategy: 'Higher-value printable journal shelf', derivativePotentialScore: 83 },
-  { id: 'PF_AIRPORT', slug: 'airport-bingo-pack', title: 'Airport Bingo Pack', niche: 'kids travel printables', useCase: 'airport', defaultAgeBand: '4-6', theme: 'travel', status: 'launch', description: 'Fast, low-page airport and terminal games that work before boarding and during delays.', parentStrategy: 'Travel + wait-time add-on shelf', derivativePotentialScore: 86 },
-  { id: 'PF_SCAVENGER', slug: 'road-trip-scavenger-hunt-pack', title: 'Road Trip Scavenger Hunt Pack', niche: 'kids travel printables', useCase: 'road trip scavenger', defaultAgeBand: '6-8', theme: 'adventure', status: 'launch', description: 'High-engagement scavenger pages and visual spotting challenges for longer drives.', parentStrategy: 'Travel + wait-time add-on shelf', derivativePotentialScore: 90 }
+  { id: 'PF_AIRPLANE', slug: 'airplane-activity-pack', title: 'Airplane Activity Pack', niche: 'kids travel printables', useCase: 'airplane', defaultAgeBand: '4-6', theme: 'travel', status: 'planning', description: 'Screen-free printable activities for flights, airport waiting, tray table time, and in-seat boredom.', parentStrategy: 'Travel + wait-time starter shelf', derivativePotentialScore: 92 },
+  { id: 'PF_ROADTRIP', slug: 'road-trip-activity-pack', title: 'Road Trip Activity Pack', niche: 'kids travel printables', useCase: 'road trip', defaultAgeBand: '4-6', theme: 'adventure', status: 'planning', description: 'Printable activities for car rides, snack stops, and backseat boredom.', parentStrategy: 'Travel + wait-time starter shelf', derivativePotentialScore: 95 },
+  { id: 'PF_RESTAURANT', slug: 'restaurant-placemat-pack', title: 'Restaurant Placemat Pack', niche: 'kids wait-time printables', useCase: 'restaurant', defaultAgeBand: '3-5', theme: 'animals', status: 'planning', description: 'Placemat-style printables that buy 20 to 40 minutes of calm restaurant time.', parentStrategy: 'Everyday wait-time shelf', derivativePotentialScore: 88 },
+  { id: 'PF_WAITING', slug: 'waiting-room-pack', title: 'Waiting Room Pack', niche: 'kids wait-time printables', useCase: 'waiting room', defaultAgeBand: '4-6', theme: 'calm', status: 'planning', description: 'Quiet, low-mess printables for appointments, errands, and delays.', parentStrategy: 'Everyday wait-time shelf', derivativePotentialScore: 84 },
+  { id: 'PF_HOTEL', slug: 'hotel-quiet-time-pack', title: 'Hotel Quiet-Time Pack', niche: 'kids travel printables', useCase: 'hotel', defaultAgeBand: '4-6', theme: 'travel', status: 'planning', description: 'Printables for hotel downtime, early arrivals, rainy-day rest, and pre-dinner calm.', parentStrategy: 'Travel + downtime shelf', derivativePotentialScore: 81 },
+  { id: 'PF_CAMPING', slug: 'camping-activity-pack', title: 'Camping Activity Pack', niche: 'kids outdoor printables', useCase: 'camping', defaultAgeBand: '4-6', theme: 'nature', status: 'planning', description: 'Nature-themed printables for campsite downtime, cabins, and rainy-day outdoor trips.', parentStrategy: 'Seasonal and destination shelf', derivativePotentialScore: 78 },
+  { id: 'PF_BEACH', slug: 'beach-day-pack', title: 'Beach Day Pack', niche: 'kids outdoor printables', useCase: 'beach', defaultAgeBand: '4-6', theme: 'ocean', status: 'planning', description: 'Beach-themed printables for travel days, condos, cottages, and off-sand recovery time.', parentStrategy: 'Seasonal and destination shelf', derivativePotentialScore: 77 },
+  { id: 'PF_JOURNAL', slug: 'travel-journal-for-kids', title: 'Travel Journal for Kids', niche: 'kids travel journals', useCase: 'travel journal', defaultAgeBand: '6-8', theme: 'travel', status: 'planning', description: 'A guided printable travel journal for memories, checklists, drawing prompts, and trip reflections.', parentStrategy: 'Higher-value printable journal shelf', derivativePotentialScore: 83 },
+  { id: 'PF_AIRPORT', slug: 'airport-bingo-pack', title: 'Airport Bingo Pack', niche: 'kids travel printables', useCase: 'airport', defaultAgeBand: '4-6', theme: 'travel', status: 'planning', description: 'Fast, low-page airport and terminal games that work before boarding and during delays.', parentStrategy: 'Travel + wait-time add-on shelf', derivativePotentialScore: 86 },
+  { id: 'PF_SCAVENGER', slug: 'road-trip-scavenger-hunt-pack', title: 'Road Trip Scavenger Hunt Pack', niche: 'kids travel printables', useCase: 'road trip scavenger', defaultAgeBand: '6-8', theme: 'adventure', status: 'planning', description: 'High-engagement scavenger pages and visual spotting challenges for longer drives.', parentStrategy: 'Travel + wait-time add-on shelf', derivativePotentialScore: 90 }
 ];
 
 const SKU_VARIANTS = {
@@ -65,18 +65,10 @@ const SKU_VARIANTS = {
 };
 
 const BUNDLES = [
-  { id: 'BUNDLE_TRAVEL_STARTER', title: 'Family Travel Starter Bundle', bundleType: '3-pack', channelAvailability: ['etsy', 'gumroad'], priceEtsy: 14.99, priceGumroad: 15.99, priceKdp: null, status: 'launch', notes: 'Best-entry bundle for parents planning a trip this week.', skuIds: ['SKU_AIRPLANE_46_DINOS', 'SKU_ROADTRIP_46_DINOS', 'SKU_AIRPORT_46_TRAVEL'] },
-  { id: 'BUNDLE_WAIT_TIME', title: 'Busy Anywhere Bundle', bundleType: 'mega bundle', channelAvailability: ['etsy', 'gumroad'], priceEtsy: 18.99, priceGumroad: 19.99, priceKdp: null, status: 'launch', notes: 'General-purpose boredom-buster bundle for restaurants, waiting rooms, and hotel downtime.', skuIds: ['SKU_RESTAURANT_46_OCEAN', 'SKU_WAITING_46_SPACE', 'SKU_HOTEL_46_TRAVEL'] },
-  { id: 'BUNDLE_SUMMER', title: 'Summer Adventure Bundle', bundleType: '3-pack', channelAvailability: ['etsy', 'gumroad'], priceEtsy: 16.99, priceGumroad: 17.99, priceKdp: null, status: 'launch', notes: 'Seasonal bundle for cottages, campsites, and beach travel.', skuIds: ['SKU_BEACH_46_ANIMALS', 'SKU_CAMPING_46_ANIMALS', 'SKU_JOURNAL_46_MEMORY'] }
+  { id: 'BUNDLE_TRAVEL_STARTER', title: 'Family Travel Starter Bundle', bundleType: '3-pack', channelAvailability: ['etsy', 'gumroad'], priceEtsy: 14.99, priceGumroad: 15.99, priceKdp: null, status: 'planning', notes: 'Best-entry bundle for parents planning a trip this week.', skuIds: ['SKU_AIRPLANE_46_DINOS', 'SKU_ROADTRIP_46_DINOS', 'SKU_AIRPORT_46_TRAVEL'] },
+  { id: 'BUNDLE_WAIT_TIME', title: 'Busy Anywhere Bundle', bundleType: 'mega bundle', channelAvailability: ['etsy', 'gumroad'], priceEtsy: 18.99, priceGumroad: 19.99, priceKdp: null, status: 'planning', notes: 'General-purpose boredom-buster bundle for restaurants, waiting rooms, and hotel downtime.', skuIds: ['SKU_RESTAURANT_46_OCEAN', 'SKU_WAITING_46_SPACE', 'SKU_HOTEL_46_TRAVEL'] },
+  { id: 'BUNDLE_SUMMER', title: 'Summer Adventure Bundle', bundleType: '3-pack', channelAvailability: ['etsy', 'gumroad'], priceEtsy: 16.99, priceGumroad: 17.99, priceKdp: null, status: 'planning', notes: 'Seasonal bundle for cottages, campsites, and beach travel.', skuIds: ['SKU_BEACH_46_ANIMALS', 'SKU_CAMPING_46_ANIMALS', 'SKU_JOURNAL_46_MEMORY'] }
 ];
-
-const BASE_METRICS = {
-  SKU_AIRPLANE_46_DINOS: { impressions: 1820, clicks: 146, favorites: 28, conversions: 21, orders: 18, grossRevenue: 116.82, netRevenueEstimate: 95.2, refundCount: 0, ratingAvg: 4.9, reviewCount: 9 },
-  SKU_AIRPLANE_68_TRAVEL: { impressions: 2140, clicks: 168, favorites: 36, conversions: 27, orders: 22, grossRevenue: 164.78, netRevenueEstimate: 132.7, refundCount: 1, ratingAvg: 4.8, reviewCount: 12 },
-  SKU_ROADTRIP_46_DINOS: { impressions: 2480, clicks: 201, favorites: 41, conversions: 33, orders: 29, grossRevenue: 202.71, netRevenueEstimate: 161.54, refundCount: 0, ratingAvg: 4.9, reviewCount: 14 },
-  SKU_RESTAURANT_35_ANIMALS: { impressions: 1660, clicks: 152, favorites: 39, conversions: 24, orders: 20, grossRevenue: 79.8, netRevenueEstimate: 64.9, refundCount: 0, ratingAvg: 5.0, reviewCount: 16 },
-  BUNDLE_TRAVEL_STARTER: { impressions: 720, clicks: 66, favorites: 19, conversions: 13, orders: 11, grossRevenue: 164.89, netRevenueEstimate: 133.3, refundCount: 0, ratingAvg: 4.9, reviewCount: 5 }
-};
 
 export function getSeedFamilies() {
   return FAMILY_DEFS.map((family) => ({ ...family, tags: [family.useCase, family.theme, 'screen-free', 'printable'] }));
@@ -103,9 +95,9 @@ export function getSeedSkus() {
         priceEtsy: variant.priceEtsy,
         priceGumroad: variant.priceGumroad,
         priceKdp: variant.priceKdp,
-        status: 'ready',
-        qaStatus: 'approved',
-        filePackageStatus: 'packaged',
+        status: 'planned',
+        qaStatus: 'not_started',
+        filePackageStatus: 'not_built',
         notes: `${family.title} for ages ${variant.ageBand}. Theme: ${variant.theme}.`,
         tags: [family.useCase, variant.theme, `ages-${variant.ageBand.replace('-', '')}`, 'screen-free', 'printable']
       });
@@ -136,23 +128,13 @@ export function buildSeedListings(families, skus, bundles, helpers) {
   return listings;
 }
 
-export function buildSeedPerformanceSnapshots(skus, bundles) {
-  const snapshots = [];
-  const today = new Date().toISOString().slice(0, 10);
-  for (const sku of skus) {
-    const metrics = BASE_METRICS[sku.id] || { impressions: 520, clicks: 34, favorites: 6, conversions: 4, orders: 3, grossRevenue: +(sku.priceEtsy * 3).toFixed(2), netRevenueEstimate: +(sku.priceEtsy * 2.4).toFixed(2), refundCount: 0, ratingAvg: 4.7, reviewCount: 1 };
-    snapshots.push({ id: `SNAP_${sku.id}`, ownerType: 'sku', ownerId: sku.id, channel: 'etsy', snapshotDate: today, ...metrics, notes: 'Seeded launch performance snapshot' });
-  }
-  for (const bundle of bundles) {
-    const metrics = BASE_METRICS[bundle.id] || { impressions: 300, clicks: 22, favorites: 4, conversions: 3, orders: 2, grossRevenue: +(bundle.priceEtsy * 2).toFixed(2), netRevenueEstimate: +(bundle.priceEtsy * 1.55).toFixed(2), refundCount: 0, ratingAvg: 4.8, reviewCount: 1 };
-    snapshots.push({ id: `SNAP_${bundle.id}`, ownerType: 'bundle', ownerId: bundle.id, channel: 'etsy', snapshotDate: today, ...metrics, notes: 'Seeded bundle performance snapshot' });
-  }
-  return snapshots;
+export function buildSeedPerformanceSnapshots() {
+  return [];
 }
 
 export function buildSeedDerivativeJobs() {
   return [
-    { id: 'DJ_TRAVEL_STARTER_KDP', sourceOwnerType: 'sku', sourceOwnerId: 'SKU_ROADTRIP_46_DINOS', derivativeType: 'kdp_print_edition', ruleTriggeredBy: 'High Etsy conversion with strong review density', jobStatus: 'suggested', outputOwnerIds: [], notes: 'Road trip pack has the strongest balance of traffic and conversion. Likely first KDP candidate.' },
-    { id: 'DJ_RESTAURANT_THEME_EXPANSION', sourceOwnerType: 'family', sourceOwnerId: 'PF_RESTAURANT', derivativeType: 'theme_variant', ruleTriggeredBy: 'Strong conversion from younger buyers suggests more character themes could work', jobStatus: 'suggested', outputOwnerIds: [], notes: 'Recommend adding unicorn/fairy-adjacent original theme and a vehicle theme.' }
+    { id: 'DJ_FAMILY_TRAVEL_BUNDLE', sourceOwnerType: 'family', sourceOwnerId: 'PF_AIRPLANE', derivativeType: 'bundle_expansion', ruleTriggeredBy: 'Launch planning', jobStatus: 'planned', outputOwnerIds: [], notes: 'Create a stronger travel launch bundle once the first airplane and airport packs are built.' },
+    { id: 'DJ_RESTAURANT_THEME_EXPANSION', sourceOwnerType: 'family', sourceOwnerId: 'PF_RESTAURANT', derivativeType: 'theme_variant', ruleTriggeredBy: 'Launch planning', jobStatus: 'planned', outputOwnerIds: [], notes: 'Add one more non-licensed original theme once the first placemat pack is finished.' }
   ];
 }
