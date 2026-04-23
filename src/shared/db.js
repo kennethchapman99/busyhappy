@@ -179,6 +179,29 @@ function upsert(table, id, fields) {
   }
 }
 
+export const upsertSku = (sku) => upsert('skus', sku.id, {
+  created_at: sku.createdAt || now(),
+  updated_at: now(),
+  product_family_id: sku.productFamilyId,
+  sku_code: sku.skuCode,
+  title: sku.title,
+  subtitle: sku.subtitle || null,
+  age_band: sku.ageBand || null,
+  use_case: sku.useCase || null,
+  theme: sku.theme || null,
+  format_type: sku.formatType || null,
+  page_count: sku.pageCount || 0,
+  difficulty_level: sku.difficultyLevel || null,
+  price_etsy: sku.priceEtsy || null,
+  price_gumroad: sku.priceGumroad || null,
+  price_kdp: sku.priceKdp || null,
+  status: sku.status || 'draft',
+  qa_status: sku.qaStatus || 'pending',
+  file_package_status: sku.filePackageStatus || 'unpackaged',
+  notes: sku.notes || null,
+  tags_json: JSON.stringify(sku.tags || []),
+});
+
 export function createDerivativeJob(job) {
   const id = job.id || `DJ_${Date.now().toString(36).toUpperCase()}_${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   upsert('derivative_jobs', id, {
@@ -208,13 +231,7 @@ export function seedCatalog({ families, skus, bundles, listings, snapshots, deri
       parent_strategy: family.parentStrategy || null, derivative_potential_score: family.derivativePotentialScore || 0, tags_json: JSON.stringify(family.tags || []),
     }));
 
-    skus.forEach((sku) => upsert('skus', sku.id, {
-      created_at: now(), updated_at: now(), product_family_id: sku.productFamilyId, sku_code: sku.skuCode, title: sku.title, subtitle: sku.subtitle || null,
-      age_band: sku.ageBand || null, use_case: sku.useCase || null, theme: sku.theme || null, format_type: sku.formatType || null, page_count: sku.pageCount || 0,
-      difficulty_level: sku.difficultyLevel || null, price_etsy: sku.priceEtsy || null, price_gumroad: sku.priceGumroad || null, price_kdp: sku.priceKdp || null,
-      status: sku.status || 'draft', qa_status: sku.qaStatus || 'pending', file_package_status: sku.filePackageStatus || 'unpackaged', notes: sku.notes || null,
-      tags_json: JSON.stringify(sku.tags || []),
-    }));
+    skus.forEach(upsertSku);
 
     bundles.forEach((bundle) => {
       upsert('bundles', bundle.id, {
@@ -248,7 +265,7 @@ export function getDashboardStats() {
   const skus = database.prepare('SELECT COUNT(*) c FROM skus').get().c;
   const bundles = database.prepare('SELECT COUNT(*) c FROM bundles').get().c;
   const liveListings = database.prepare("SELECT COUNT(*) c FROM channel_listings WHERE status = 'live'").get().c;
-  const estimatedNetRevenue = +(database.prepare('SELECT SUM(net_revenue_estimate) total FROM performance_snapshots').get().total || 0).toFixed(2);
+  const estimatedNetRevenue = liveListings > 0 ? +(database.prepare('SELECT SUM(net_revenue_estimate) total FROM performance_snapshots').get().total || 0).toFixed(2) : 0;
   return { families, skus, bundles, liveListings, estimatedNetRevenue };
 }
 
@@ -257,7 +274,11 @@ export const getChannelSummary = () => getDb().prepare(`
   FROM channel_listings GROUP BY channel ORDER BY channel
 `).all();
 
-export const getTopPerformers = (limit = 8) => getDb().prepare(`
-  SELECT owner_type, owner_id, channel, MAX(snapshot_date) latest_snapshot, SUM(orders) total_orders, ROUND(SUM(net_revenue_estimate), 2) total_net_revenue
-  FROM performance_snapshots GROUP BY owner_type, owner_id, channel ORDER BY total_orders DESC, total_net_revenue DESC LIMIT ?
-`).all(limit);
+export const getTopPerformers = (limit = 8) => {
+  const liveListings = getDb().prepare("SELECT COUNT(*) c FROM channel_listings WHERE status = 'live'").get().c;
+  if (!liveListings) return [];
+  return getDb().prepare(`
+    SELECT owner_type, owner_id, channel, MAX(snapshot_date) latest_snapshot, SUM(orders) total_orders, ROUND(SUM(net_revenue_estimate), 2) total_net_revenue
+    FROM performance_snapshots GROUP BY owner_type, owner_id, channel ORDER BY total_orders DESC, total_net_revenue DESC LIMIT ?
+  `).all(limit);
+};
