@@ -6,7 +6,7 @@
   "main": "src/orchestrator.js",
   "scripts": {
     "start": "node src/orchestrator.js",
-    "web": "node src/web/server.js",
+    "web": "node src/web/busyhappy-server.js",
     "setup": "node src/orchestrator.js --setup",
     "seed": "node src/orchestrator.js --seed",
     "build-products": "node src/orchestrator.js --build-products",
