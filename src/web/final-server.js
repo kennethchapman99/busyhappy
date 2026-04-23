@@ -13,7 +13,7 @@ import { seedBusyLittleHappyCatalog, buildBusyLittleHappyProducts } from '../orc
 import { getBuildStatusForSku } from '../shared/product-builder.js';
 
 const app = express();
-const PORT = Number(process.env.WEB_PORT || 3737);
+const PORT = Number(process.env.WEB_PORT || 7373);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(join(__dirname, 'public')));
@@ -61,7 +61,6 @@ app.get('/families', (req, res) => {
 });
 
 app.get('/families/:id', (req, res) => {
-  const s = state();
   const family = getProductFamily(req.params.id);
   if (!family) return res.status(404).send(shell('Not found', req.path, `<div class="panel"><h1>Missing page</h1><p class="muted">Family not found: ${esc(req.path)}</p></div>`));
   const skus = getSkusForFamily(family.id).map((sku) => ({ ...sku, buildStatus: getBuildStatusForSku(sku.id) }));
