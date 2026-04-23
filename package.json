@@ -9,6 +9,7 @@
     "web": "node src/web/server.js",
     "setup": "node src/orchestrator.js --setup",
     "seed": "node src/orchestrator.js --seed",
+    "build-products": "node src/orchestrator.js --build-products",
     "list-families": "node src/orchestrator.js --list-families",
     "list-skus": "node src/orchestrator.js --list-skus",
     "report": "node src/orchestrator.js --report",
